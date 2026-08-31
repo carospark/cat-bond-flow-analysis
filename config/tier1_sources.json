@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "swiss_re_cat_bond_index_methodology",
+      "stage": "tier1",
+      "group": "secondary_market_and_returns",
+      "publisher": "Swiss Re",
+      "title": "Swiss Re Cat Bond Indices methodology",
+      "url": "https://www.swissre.com/dam/jcr%3A307452ca-9664-4772-96f9-7c11f80109b2/2014_08_ils_cat_bond_indices_methodology.pdf",
+      "filename": "swiss_re_cat_bond_indices_methodology.pdf",
+      "frequency": "methodology; pull when revised",
+      "coverage": "Index definitions and Bloomberg tickers; no observation history",
+      "parser": null
+    },
+    {
+      "id": "with_intelligence_ils_index",
+      "stage": "tier1",
+      "group": "secondary_market_and_returns",
+      "publisher": "With Intelligence",
+      "title": "With Intelligence ILS Index - USD Hedged (continuation of Eurekahedge ILS Advisers Index)",
+      "url": "https://platform.withintelligence.com/performance/indices/11750",
+      "filename": "with_intelligence_ils_index.html",
+      "frequency": "monthly",
+      "coverage": "January 2006 onward; December 2005 base",
+      "parser": "with_ils_index"
+    },
+    {
+      "id": "brookmont_ils_etf",
+      "stage": "tier1",
+      "group": "secondary_market_and_returns",
+      "publisher": "Brookmont Capital Management",
+      "title": "Brookmont Catastrophic Bond ETF (ILS) fund page",
+      "url": "https://ilsetf.com/ils",
+      "filename": "brookmont_ils_etf.html",
+      "frequency": "daily",
+      "coverage": "Fund inception April 1, 2025 onward",
+      "parser": "brookmont_ils"
+    },
+    {
+      "id": "guy_carpenter_rol_1990_2020",
+      "stage": "tier1",
+      "group": "reinsurance_comparator",
+      "publisher": "Guy Carpenter",
+      "title": "Leading up to January 2021 renewals (historical ROL chart)",
+      "url": "https://www.guycarp.com/content/dam/guycarp/en/documents/library/2019/leading-up-to-january-2021-renewals.pdf",
+      "filename": "guy_carpenter_rol_1990_2020.pdf",
+      "frequency": "historical anchor",
+      "coverage": "Global Property Catastrophe Rate-on-Line Index, 1990 to July 2020",
+      "parser": null
+    },
+    {
+      "id": "guy_carpenter_rol_2000_2026",
+      "stage": "tier1",
+      "group": "reinsurance_comparator",
+      "publisher": "Guy Carpenter",
+      "title": "Global Property Catastrophe Rate-on-Line Index",
+      "url": "https://www.guycarp.com/content/dam/guycarp-rebrand/insights-images/renewal-hub/2026Renewals/GlobalPropertyCatastropheRateonLineIndex.pdf",
+      "filename": "guy_carpenter_rol_2000_2026.pdf",
+      "frequency": "annual, January",
+      "coverage": "2000 to January 1, 2026",
+      "parser": null
+    },
+    {
+      "id": "howden_renewal_2026",
+      "stage": "tier1",
+      "group": "reinsurance_comparator",
+      "publisher": "Howden",
+      "title": "Re-balancing: 1.1.2026 renewal report page",
+      "url": "https://www.howdengroup.com/ph-en/news/howden-renewal-report-112026",
+      "filename": "howden_renewal_2026.html",
+      "frequency": "annual, January",
+      "coverage": "Risk-adjusted index changes through January 1, 2026; the public page exposes commentary but not the underlying index table",
+      "parser": null
+    },
+    {
+      "id": "aon_reinsurance_market_dynamics_jan_2026",
+      "stage": "tier1",
+      "group": "reinsurance_comparator",
+      "publisher": "Aon",
+      "title": "Reinsurance Market Dynamics: January 2026 renewal",
+      "url": "https://assets.aon.com/-/media/files/aon/reports/2026/rmd-jan-2026-report.pdf",
+      "filename": "aon_rmd_january_2026.pdf",
+      "frequency": "January renewal",
+      "coverage": "January 2026 renewal and third-party capital through Q3 2025",
+      "parser": null
+    },
+    {
+      "id": "aon_reinsurance_market_dynamics_apr_2026",
+      "stage": "tier1",
+      "group": "reinsurance_comparator",
+      "publisher": "Aon",
+      "title": "Reinsurance Market Dynamics: April 2026 renewal",
+      "url": "https://assets.aon.com/-/media/files/aon/reports/2026/20260401_rmd_april_2026_report.pdf",
+      "filename": "aon_rmd_april_2026.pdf",
+      "frequency": "April renewal",
+      "coverage": "April 2026 renewal",
+      "parser": null
+    },
+    {
+      "id": "aon_reinsurance_market_dynamics_midyear_2026",
+      "stage": "tier1",
+      "group": "reinsurance_comparator",
+      "publisher": "Aon",
+      "title": "Reinsurance Market Dynamics: Midyear 2026 renewal",
+      "url": "https://assets.aon.com/-/media/files/aon/reports/2026/reinsurance-market-dynamics-2026-midyear-report.pdf",
+      "filename": "aon_rmd_midyear_2026.pdf",
+      "frequency": "June/July renewal",
+      "coverage": "Midyear 2026 renewal; capital through Q1 2026",
+      "parser": null
+    },
+    {
+      "id": "aon_securities_ils_annual_2025",
+      "stage": "tier1",
+      "group": "primary_market_cross_checks",
+      "publisher": "Aon Securities",
+      "title": "Aon Securities 2025 ILS Annual Report",
+      "url": "https://assets.aon.com/-/media/files/aon/insights/2025/aon-securities-2025-annual-report.pdf",
+      "filename": "aon_securities_ils_annual_2025.pdf",
+      "frequency": "annual",
+      "coverage": "July 2024 through June 2025; longer-run exhibits vary",
+      "parser": null
+    },
+    {
+      "id": "swiss_re_ils_market_insights_feb_2025",
+      "stage": "tier1",
+      "group": "primary_market_cross_checks",
+      "publisher": "Swiss Re Capital Markets",
+      "title": "ILS Market Insights: February 2025",
+      "url": "https://www.swissre.com/dam/jcr%3Ae4989a50-1a40-49fd-bba2-87a4b6da1015/ils-market-insights-february-2025.pdf",
+      "filename": "swiss_re_ils_market_insights_february_2025.pdf",
+      "frequency": "semi-annual",
+      "coverage": "Calendar 2024 with historical exhibits",
+      "parser": null
+    },
+    {
+      "id": "gallagher_securities_ils_2025",
+      "stage": "tier1",
+      "group": "primary_market_cross_checks",
+      "publisher": "Gallagher Securities",
+      "title": "Insurance-Linked Securities",
+      "url": "https://www.ajg.com/gallagherre/-/media/files/gallagher/gallagherre/news-and-insights/2025/may/gallagherre-insurance-linked-securities.pdf",
+      "filename": "gallagher_securities_ils_may_2025.pdf",
+      "frequency": "ad hoc / annual white paper",
+      "coverage": "Market through April 1, 2025; history to 2010 in selected exhibits",
+      "parser": null
+    },
+    {
+      "id": "lane_financial_ils_2024",
+      "stage": "tier1",
+      "group": "primary_market_cross_checks",
+      "publisher": "Lane Financial",
+      "title": "The Natural Catastrophe ILS Market, 2001-2023 and Its Analysis (Revised)",
+      "url": "http://www.lanefinancialllc.com/images/stories/Publications/The%20Natural%20Catastrophe%20ILS%20Market,%202001-2023%20and%20Its%20Analysis%20(Revised).pdf",
+      "filename": "lane_financial_natural_catastrophe_ils_2001_2023.pdf",
+      "frequency": "quarterly/annual; latest public report discovered on publisher site",
+      "coverage": "2001 through 2023; published March 31, 2024",
+      "parser": null
+    },
+    {
+      "id": "artemis_ils_fund_managers_snapshot",
+      "stage": "tier2_snapshot",
+      "group": "fund_flow_holder_side",
+      "publisher": "Artemis",
+      "title": "ILS Investment Managers & Funds Directory",
+      "url": "https://www.artemis.bm/ils-fund-managers/",
+      "filename": "artemis_ils_fund_managers.html",
+      "frequency": "monthly snapshot",
+      "coverage": "Current-state directory only; no publisher-supplied history",
+      "parser": null
+    }
+  ]
+}

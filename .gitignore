@@ -1,0 +1,29 @@
+__pycache__
+*.py[cod]
+.DS_Store
+.ipynb_checkpoints/
+.vscode
+*.egg-info/
+dist/
+build/
+
+# Environments
+.venv/
+venv/
+/.venv
+.env
+
+# THIRD-PARTY AND LICENSED DATA - never track. See DATA_POLICY.md.
+raw/
+/raw
+data/raw/
+/data/raw
+data/*.csv
+data/*.parquet
+data/MANIFEST.local.md
+
+# Working notes
+REVIEW_ROUND*.md
+REVIEW_PROMPT.md
+.claude/
+notebooks/
