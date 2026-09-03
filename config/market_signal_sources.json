@@ -7,8 +7,10 @@
       "publisher": "Kalshi",
       "discovery_url": "https://external-api.kalshi.com/trade-api/v2/events",
       "history_url": "https://external-api.kalshi.com/trade-api/v2",
+      "historical_markets_url": "https://external-api.kalshi.com/trade-api/v2/historical/markets",
+      "historical_cutoff_url": "https://external-api.kalshi.com/trade-api/v2/historical/cutoff",
       "frequency": "daily",
-      "scope": "Open hurricane, named-storm, and city-temperature event contracts"
+      "scope": "Open and closed hurricane, named-storm, and city-temperature event contracts"
     },
     {
       "id": "polymarket_weather_markets",
@@ -16,9 +18,10 @@
       "publisher": "Polymarket",
       "discovery_url": "https://gamma-api.polymarket.com/events/keyset",
       "price_history_url": "https://clob.polymarket.com/prices-history",
+      "batch_price_history_url": "https://clob.polymarket.com/batch-prices-history",
       "trade_history_url": "https://data-api.polymarket.com/trades",
       "frequency": "daily",
-      "scope": "Open hurricane, named-storm, and city-temperature event contracts"
+      "scope": "Open and closed hurricane, named-storm, and city-temperature event contracts"
     },
     {
       "id": "climate_central_billion_dollar_disasters",

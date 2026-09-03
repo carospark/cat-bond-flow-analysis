@@ -51,6 +51,15 @@ SPORTS_HURRICANE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+WEATHER_STORM_CONTEXT = re.compile(
+    r"\b(?:atlantic|pacific|gulf|tropical|weather|wind speed|landfall|"
+    r"category [1-5]|named storm|storm season)\b|"
+    r"\bhurricanes?\s+(?:hits?|makes? landfall|forms?|season|count|total|"
+    r"named|reaches?|becomes?)\b|"
+    r"\b(?:how many|number of|first|major)\s+(?:atlantic |pacific )?hurricanes?\b",
+    re.IGNORECASE,
+)
+
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
@@ -88,14 +97,11 @@ def _json_list(value: Any) -> list[Any]:
 def classify_weather_contract(*parts: Any) -> list[str]:
     text = " ".join(str(part or "") for part in parts)
     matches = [name for name, pattern in WEATHER_PATTERNS.items() if pattern.search(text)]
-    if "hurricane_or_named_storm" in matches and SPORTS_HURRICANE_PATTERN.search(text):
-        storm_context = re.search(
-            r"\b(?:landfall|category [1-5]|named storm|tropical "
-            r"(?:storm|cyclone)|wind speed|storm season)\b",
-            text,
-            re.IGNORECASE,
-        )
-        if not storm_context:
+    if "hurricane_or_named_storm" in matches:
+        if (not WEATHER_STORM_CONTEXT.search(text)
+                or SPORTS_HURRICANE_PATTERN.search(text)
+                and not re.search(r"\b(?:landfall|named storm|tropical storm|wind speed)\b",
+                                  text, re.IGNORECASE)):
             matches.remove("hurricane_or_named_storm")
     return matches
 

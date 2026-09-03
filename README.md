@@ -46,6 +46,7 @@ attributes another security's trades to a deal.
 src/build_bridge.py           deal universe -> security identifiers, with evidence
 src/pull_tier1_sources.py     archive external reference sources, with checksums
 src/pull_market_signals.py    archive weather-market and disaster snapshots
+src/backfill_prediction_market_history.py  resumable closed-market history
 src/extract_reference_series.py  extract Aon, Guy Carpenter, and Lane series
 config/tier1_sources.json     the source registry: publisher, title, URL, role
 config/market_signal_sources.json  public API registry for market signals
@@ -82,6 +83,7 @@ python3 -m venv .venv && ./.venv/bin/python -m pip install -e .
 ./.venv/bin/python -m unittest \
   tests.test_pull_tier1_sources \
   tests.test_pull_market_signals \
+  tests.test_backfill_prediction_market_history \
   tests.test_extract_reference_series -v
 ```
 
@@ -100,8 +102,18 @@ validation tables with:
 On macOS, `scripts/install_macos_daily_pull.sh` installs a LaunchAgent that
 runs the metadata snapshot plus Brookmont refresh at 02:15 local time. It does
 not invoke any Artemis code. Price/trade-history backfills are available by
-omitting `--metadata-only`; keep those separate from the daily discovery job
-because they require many more API requests.
+omitting `--metadata-only` for the current open universe. For resolved markets,
+run the checkpointed backfill separately:
+
+```bash
+./.venv/bin/python src/backfill_prediction_market_history.py \
+  --since 2016-09-03 --until 2026-09-04 \
+  --classification hurricane_or_named_storm
+```
+
+It discovers closed contracts newest-to-oldest, batches Polymarket price
+histories, routes Kalshi records across its live/historical cutoff, and resumes
+completed work from a gitignored SQLite database.
 
 ## Data
 

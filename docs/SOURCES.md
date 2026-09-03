@@ -25,6 +25,8 @@ checking each publisher's terms.
 ```bash
 ./.venv/bin/python src/pull_tier1_sources.py --as-of YYYY-MM-DD
 ./.venv/bin/python src/pull_market_signals.py --as-of YYYY-MM-DD --metadata-only
+./.venv/bin/python src/backfill_prediction_market_history.py \
+  --since YYYY-MM-DD --until YYYY-MM-DD
 ./.venv/bin/python src/extract_reference_series.py
 ```
 
@@ -60,6 +62,23 @@ slow by design; each run is isolated by a lock and writes stdout/stderr under
 Market-signal snapshots, licensed inputs, and extracted broker observations are
 gitignored. `config/market_signal_sources.json` is the tracked registry for the
 three new public API sources.
+
+### Historical prediction-market backfill
+
+`src/backfill_prediction_market_history.py` handles resolved contracts
+separately from the daily open-contract snapshot. Its default window is the
+latest ten years, processed newest-to-oldest. Completed discovery, price, and
+trade jobs are checkpointed in
+`data/raw/tier1/prediction_market_history.sqlite3`, so interrupted runs resume
+without repeating completed API calls.
+
+For Kalshi, the job discovers relevant `Climate and Weather` series and merges
+recent market data with the exchange's historical tier using the current
+cutoff. For Polymarket, it searches closed events in reverse-chronological
+windows and batches up to 20 outcome-token price histories per request. The
+classes can be backfilled independently: hurricane/named-storm history comes
+first because it is the direct cat-bond information signal; the much larger
+city-temperature universe follows.
 
 ## Licensed WRDS inputs archived 2026-08-31
 

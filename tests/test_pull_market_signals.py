@@ -36,6 +36,8 @@ class WeatherFilterTests(unittest.TestCase):
         self.assertEqual(classify_weather_contract("temporary Prime Minister"), [])
         self.assertEqual(classify_weather_contract("Carolina Hurricanes win the NHL?"), [])
         self.assertEqual(classify_weather_contract("Miami Hurricanes win the Atlantic Coast Conference?"), [])
+        self.assertEqual(classify_weather_contract("Cochin Hurricanes win the cricket match?"), [])
+        self.assertEqual(classify_weather_contract("Will Tyra Hurricane Black advance?"), [])
         self.assertEqual(classify_weather_contract("Official daily high price of crude oil"), [])
         self.assertEqual(classify_weather_contract("Global warming policy enacted?"), [])
 
