@@ -52,6 +52,7 @@ class HistoricalContractTests(unittest.TestCase):
         )
         self.assertEqual(len(rows), 1)
         self.assertEqual(json.loads(rows[0]["outcome_ids_json"]), ["yes", "no"])
+        self.assertNotIn("markets", json.loads(rows[0]["metadata_json"])["event"])
 
 
 class StoreTests(unittest.TestCase):

@@ -365,6 +365,7 @@ def historical_polymarket_rows(events: list[dict[str, Any]], start: datetime,
                                end: datetime) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for event in events:
+        event_metadata = {key: value for key, value in event.items() if key != "markets"}
         for market in event.get("markets", []):
             closed_at = str(market.get("endDate") or event.get("endDate") or "")
             if not in_window(closed_at, start, end):
@@ -385,7 +386,9 @@ def historical_polymarket_rows(events: list[dict[str, Any]], start: datetime,
                     or market.get("createdAt") or event.get("creationDate"),
                 "closed_at": closed_at,
                 "outcome_ids_json": json.dumps(token_ids, separators=(",", ":")),
-                "metadata_json": json.dumps({"event": event, "market": market}, sort_keys=True),
+                "metadata_json": json.dumps(
+                    {"event": event_metadata, "market": market}, sort_keys=True
+                ),
                 "discovered_at": utc_now(),
             })
     return [row for row in rows if row["contract_id"]]
