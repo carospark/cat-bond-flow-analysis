@@ -53,6 +53,7 @@ config/market_signal_sources.json  public API registry for market signals
 docs/SOURCES.md               what each source is and why it is used
 docs/MANUAL_DATA_PULLS.md     terminal/form-gated pulls and acceptance checks
 scripts/run_daily_non_artemis_snapshots.sh  daily non-Artemis snapshot runner
+scripts/run_prediction_history_batch.sh  resumable historical batch runner
 tests/                        offline tests
 DATA_POLICY.md                what may never be committed here
 ```
@@ -114,6 +115,11 @@ run the checkpointed backfill separately:
 It discovers closed contracts newest-to-oldest, batches Polymarket price
 histories, routes Kalshi records across its live/historical cutoff, and resumes
 completed work from a gitignored SQLite database.
+
+`scripts/install_macos_prediction_history_backfill.sh` installs a separate
+03:15 local-time LaunchAgent. Each run processes up to 5,000 of the newest
+remaining city-temperature contracts per platform for prices, then trades.
+Completed or publisher-unavailable jobs are skipped automatically.
 
 ## Data
 

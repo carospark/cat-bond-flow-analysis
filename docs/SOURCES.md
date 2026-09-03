@@ -84,6 +84,13 @@ classes can be backfilled independently: hurricane/named-storm history comes
 first because it is the direct cat-bond information signal; the much larger
 city-temperature universe follows.
 
+The city-temperature universe discovered on 2026-09-03 contains 197,884
+resolved Kalshi contracts and 120,613 resolved Polymarket contracts. Because
+their histories are substantially larger than the storm dataset, a separate
+03:15 local-time LaunchAgent processes up to 5,000 of the newest remaining
+contracts per platform and stage each night. It resumes from the same SQLite
+checkpoints and never invokes Artemis code.
+
 ## Licensed WRDS inputs archived 2026-08-31
 
 The following Penn WRDS exports were queried on 2026-08-30 and copied into

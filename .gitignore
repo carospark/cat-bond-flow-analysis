@@ -25,6 +25,8 @@ data/*.parquet
 data/MANIFEST.local.md
 data/.daily-non-artemis-pull.lock/
 data/daily-non-artemis-pull.*.log
+data/.prediction-history-batch.lock/
+data/prediction-history-batch.*.log
 
 # Working notes
 REVIEW_ROUND*.md
