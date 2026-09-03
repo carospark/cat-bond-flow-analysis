@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "kalshi_weather_markets",
+      "stage": "tier1_snapshot",
+      "publisher": "Kalshi",
+      "discovery_url": "https://external-api.kalshi.com/trade-api/v2/events",
+      "history_url": "https://external-api.kalshi.com/trade-api/v2",
+      "frequency": "daily",
+      "scope": "Open hurricane, named-storm, and city-temperature event contracts"
+    },
+    {
+      "id": "polymarket_weather_markets",
+      "stage": "tier1_snapshot",
+      "publisher": "Polymarket",
+      "discovery_url": "https://gamma-api.polymarket.com/events/keyset",
+      "price_history_url": "https://clob.polymarket.com/prices-history",
+      "trade_history_url": "https://data-api.polymarket.com/trades",
+      "frequency": "daily",
+      "scope": "Open hurricane, named-storm, and city-temperature event contracts"
+    },
+    {
+      "id": "climate_central_billion_dollar_disasters",
+      "stage": "tier1_event_calendar",
+      "publisher": "Climate Central",
+      "events_url": "https://www.climatecentral.org/climate-services/billion-dollar-disasters/events",
+      "annual_csv_url": "https://www.climatecentral.org/climate-services/billion-dollar-disasters/time-series/data?format=csv",
+      "frequency": "after publisher updates",
+      "scope": "U.S. billion-dollar disaster event calendar and annual aggregates"
+    }
+  ]
+}

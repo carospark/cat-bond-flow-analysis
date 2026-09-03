@@ -24,12 +24,42 @@ checking each publisher's terms.
 
 ```bash
 ./.venv/bin/python src/pull_tier1_sources.py --as-of YYYY-MM-DD
+./.venv/bin/python src/pull_market_signals.py --as-of YYYY-MM-DD --metadata-only
+./.venv/bin/python src/extract_reference_series.py
 ```
 
 Use `--source SOURCE_ID` to refresh one source. Each run records the resolved
 payload path, byte count, SHA-256, UTC timestamp, parser outputs, and failures
 in `data/raw/tier1/pull_log.jsonl`; `latest_status.json` contains the last result
 for every configured source.
+
+On macOS, `scripts/install_macos_daily_pull.sh` installs a 02:15 local-time
+LaunchAgent that snapshots Kalshi, Polymarket, Climate Central, and Brookmont.
+The runner names only non-Artemis sources. Kalshi's complete open-event scan is
+slow by design; each run is isolated by a lock and writes stdout/stderr under
+`data/`.
+
+## Non-Artemis refresh completed 2026-09-03
+
+- Kalshi: 13,653 open events scanned; 728 contracts retained only when the
+  event's official category is `Climate and Weather` and its title describes a
+  hurricane, named storm, or city temperature. Metadata includes current
+  quotes, volume, open interest, and resolution rules.
+- Polymarket: 22,795 active, non-closed events scanned using the official
+  keyset cursor endpoint; 3,225 still-tradable, non-expired weather contracts
+  retained. The large count is mostly daily city-temperature outcome ladders.
+- Climate Central: 438 event records and 47 annual observations (1980-2026)
+  archived. This is an economic-loss event calendar, not insured loss.
+- Brookmont: 133 holdings as of 2026-09-01 and current NAV metrics archived.
+  The issuer's embedded historical NAV array remains frozen at 191 observations
+  ending 2025-12-31.
+- Priority broker extraction: 16 Aon annual issuance labels, 128 Aon tranche
+  pricing rows, 27 Guy Carpenter ROL observations, and 23 Lane annual pricing
+  rows are written locally to `data/processed/reference_series/`.
+
+Market-signal snapshots, licensed inputs, and extracted broker observations are
+gitignored. `config/market_signal_sources.json` is the tracked registry for the
+three new public API sources.
 
 ## Licensed WRDS inputs archived 2026-08-31
 
@@ -110,20 +140,21 @@ the local pull log).
 | `with_intelligence_ils_index` | downloaded + parsed | 2,094,989 | `80452504e6d8` | 247 monthly returns, 2006-01 through 2026-07 |
 | `brookmont_ils_etf` | downloaded + parsed | 225,665 | `885ee2438249` | 133 holdings; 191 NAV observations; fund snapshot |
 | `guy_carpenter_rol_1990_2020` | downloaded | 5,558,484 | `2bfc856e661c` | chart extraction pending |
-| `guy_carpenter_rol_2000_2026` | downloaded | 128,993 | `82e601a10387` | chart extraction pending |
+| `guy_carpenter_rol_2000_2026` | downloaded | 128,993 | `82e601a10387` | 27 annual vector-digitized observations, 2000-2026 |
 | `howden_renewal_2026` | downloaded | 279,708 | `c1d509d88790` | page text only; index-level extraction pending |
 | `aon_reinsurance_market_dynamics_jan_2026` | downloaded | 10,561,069 | `e78bc878589a` | PDF extraction pending |
 | `aon_reinsurance_market_dynamics_apr_2026` | downloaded | 13,994,580 | `75b60340ea15` | PDF extraction pending |
 | `aon_reinsurance_market_dynamics_midyear_2026` | downloaded | 3,972,722 | `e15ca5348e89` | PDF extraction pending |
-| `aon_securities_ils_annual_2025` | downloaded | 775,823 | `fee46b4a8d41` | broker-series extraction pending |
+| `aon_securities_ils_annual_2025` | downloaded | 775,823 | `fee46b4a8d41` | 16 annual issuance labels; 128 tranche pricing rows |
 | `swiss_re_ils_market_insights_feb_2025` | downloaded | 7,627,927 | `310168d35346` | broker-series extraction pending |
 | `gallagher_securities_ils_2025` | downloaded | 2,322,647 | `9dff6bb5817e` | broker-series extraction pending |
-| `lane_financial_ils_2024` | downloaded | 3,775,293 | `aa0cc9cafa7e` | rational-pricing extraction pending |
+| `lane_financial_ils_2024` | downloaded | 3,775,293 | `aa0cc9cafa7e` | 23 annual issuance/spread/EL/multiple rows |
 | `artemis_ils_fund_managers_snapshot` | downloaded | 143,796 | `f51d48dd7813` | current-state page archived |
 
-Brookmont caveat: the page and holdings table were dated 2026-08-27 at pull
-time, but its embedded NAV chart stopped at 2025-12-31. The parser preserves
-what the issuer served and does not fill the missing 2026 observations.
+Brookmont caveat: the refreshed holdings table is dated 2026-09-01, but its
+embedded NAV chart still stops at 2025-12-31. The parser preserves what the
+issuer served and does not fill the missing 2026 observations. Exchange closes
+must remain separately labelled market-price observations, not substituted NAV.
 
 ## Tier 1 source inventory
 
@@ -145,7 +176,7 @@ methodology.
 
 | Dataset | Canonical source | Frequency | Published coverage | Access / license | Pull state |
 |---|---|---|---|---|---|
-| Guy Carpenter Global Property Catastrophe ROL Index | [Renewal hub](https://www.guycarp.com/insights/renewal-hub.html) | Annual, January | Historical anchor 1990-2020; current chart 2000-Jan 2026 | Public reports; Guy Carpenter copyright | Historical and current PDFs archived; chart digitization/reconciliation pending. |
+| Guy Carpenter Global Property Catastrophe ROL Index | [Renewal hub](https://www.guycarp.com/insights/renewal-hub.html) | Annual, January | Historical anchor 1990-2020; current chart 2000-Jan 2026 | Public reports; Guy Carpenter copyright | Current vector chart digitized to 27 annual points with a 0.4-index-point uncertainty flag; historical-anchor reconciliation remains. |
 | Howden risk-adjusted global property-cat ROL | [2026 renewal page](https://www.howdengroup.com/ph-en/news/howden-renewal-report-112026) | Annual, January | Page reports annual change and charts from 2012-2026 | Public page; Howden copyright | Page archived; full report download is contact-gated and no table is exposed. |
 | Aon Reinsurance Market Dynamics | [Report library](https://www.aon.com/en/insights/reports/reinsurance-market-dynamics) | January, April, June/July | Current reports plus publisher archive | Public reports; Aon copyright | January, April, and midyear 2026 PDFs archived. |
 | Aon and Guy Carpenter alternative-capital breakdowns | Same Aon and Guy Carpenter report libraries | Annual / semi-annual | Exhibit-dependent | Public reports; publisher copyright | Aon's latest structure/capital exhibits archived in the reports above; extraction pending. GC has no current machine-readable structure table. |
@@ -154,11 +185,11 @@ methodology.
 
 | Dataset | Canonical source | Frequency | Published coverage | Access / license | Pull state |
 |---|---|---|---|---|---|
-| Aon Securities ILS reports | [2025 annual report](https://assets.aon.com/-/media/files/aon/insights/2025/aon-securities-2025-annual-report.pdf) | Annual; prior quarterly updates vary | July 2024-June 2025, with selected history | Public PDF; Aon copyright | Latest annual report archived; issuance/multiple/guidance extraction pending. |
+| Aon Securities ILS reports | [2025 annual report](https://assets.aon.com/-/media/files/aon/insights/2025/aon-securities-2025-annual-report.pdf) | Annual; prior quarterly updates vary | July 2024-June 2025, with selected history | Public PDF; Aon copyright | Annual issuance labels and tranche size/EL/spread extracted; spread-to-EL multiple derived. The report has no aggregate price-versus-guidance table. |
 | Swiss Re Capital Markets ILS reports | [ILS Market Insights](https://www.swissre.com/our-business/alternative-capital-partners/ils-market-insights-february-2026.html) | Semi-annual | Selected history; current edition covers 2025 | Public report pages/PDFs; Swiss Re copyright | February 2025 PDF archived. Current 2026 landing pages verified, but their direct PDF endpoints are not publicly exposed to this puller. |
 | GC Securities reports | [Guy Carpenter insights](https://www.guycarp.com/insights.html) | Historically quarterly / ad hoc | Varies | Public pages/reports; Guy Carpenter copyright | No current standalone quarterly GC Securities report was discoverable; use GC renewal material as available and keep this as a documented gap. |
 | Gallagher Securities ILS reports | [May 2025 ILS white paper](https://www.ajg.com/gallagherre/-/media/files/gallagher/gallagherre/news-and-insights/2025/may/gallagherre-insurance-linked-securities.pdf) | Ad hoc / annual | Through April 1, 2025; selected history to 2010 | Public PDF; Gallagher copyright | White paper archived; the publisher does not currently expose a quarterly series. |
-| Lane Financial reports | [Publisher site](http://www.lanefinancialllc.com/) | Quarterly / annual | Latest located report covers 2001-2023 | Public PDF; Lane Financial copyright | Revised March 2024 report archived; no later first-party PDF was discoverable. |
+| Lane Financial reports | [Publisher site](http://www.lanefinancialllc.com/) | Quarterly / annual | Latest located report covers 2001-2023 | Public PDF; Lane Financial copyright | Table 1 extracted: 23 annual rows with issuance, spread, SSST/WSST EL, and multiples. No later first-party PDF was discoverable. |
 
 ## Manual Tier 1 action
 
@@ -168,6 +199,21 @@ terminal, export weekly date/value history for `SRCATTRR`, `SRCATPRC`,
 names and export metadata. Store the licensed file under
 `data/raw/tier1/manual/bloomberg/`; that directory is ignored. Before export,
 confirm whether Bloomberg now aliases `SRCATPRR` to `SRCATPRC`.
+
+The other authenticated/manual handoffs, including the raw TRACE transaction
+query that must wait for a curated CUSIP universe, are specified in
+`docs/MANUAL_DATA_PULLS.md`.
+
+## Acquisition and extraction gaps
+
+| Gap | Current evidence | Resolution path |
+|---|---|---|
+| Bloomberg index histories | The methodology is archived, but observations are available through a licensed terminal | Export the six weekly series using the acceptance checklist in `docs/MANUAL_DATA_PULLS.md`. |
+| Raw WRDS BTDS 144A transactions | The archived TRACE/FISD files are masters, not trades; the trade query depends on the curated CUSIP universe | After the independently built deal-to-CUSIP bridge is ready, query `trace_enhanced.trace_btds144a_enhanced` and preserve WRDS screens/query metadata locally. |
+| Swiss Re 2026 ILS Market Insights PDFs | February and July landing pages are live; automated requests returned HTTP 403 and no stable public PDF endpoint was exposed | Download both through their publication forms, verify the files, and archive them as manual pulls. |
+| Brookmont 2026 historical NAV | The 2026-09-03 issuer snapshot has current NAV and 2026 holdings, but its embedded daily history still ends 2025-12-31 | Use an official administrator or issuer history feed when one becomes available. Keep exchange prices separately labelled. |
+| Aon aggregate price-versus-guidance | The 2025 annual report publishes tranche size, expected loss, and initial spread, but no aggregate guidance series | Retain as a documented source limitation; do not manufacture an aggregate. |
+| GC quarterly and Howden full reports | No current standalone GC Securities quarterly series was found; Howden's full report is contact-gated | Retain these as explicit access gaps until first-party files are obtained. |
 
 ## Tier 2 inventory
 
@@ -198,7 +244,7 @@ which must be archived immediately and repeatedly.
 | MarketPsych Country Sentiment | Daily natural-disaster and weather-event buzz/sentiment for aligning media attention with probability and price changes | Daily, 1998-01-01 through 2025-12-31 in the current US/UK pull | Licensed Penn WRDS research input; do not redistribute | US/UK country extract archived. City-level NYC/London coverage remains a possible later pull. |
 | RavenPack RPA 1.0 | Intraday warning and warning-lifted event taxonomy for defining ex-ante catastrophe information shocks | Taxonomy current at pull; underlying event data described as 2000 onward | Licensed Penn WRDS research input; do not redistribute | Full taxonomy archived. Entity mapping and timestamped Global Macro events are not yet pulled. |
 | OptionMetrics IvyDB US | Option-implied tail risk for insurers, reinsurers, and insurance ETFs | Daily, 1996 onward according to the saved WRDS audit | Licensed Penn WRDS research input | Planned; no data export archived yet. |
-| Kalshi and Polymarket climate-event contracts | Actual event probabilities and price paths for hurricane, temperature, and related markets | Contract/event-dependent, intraday where available | Off-WRDS; platform/API terms must be reviewed at pull time | Planned. These are the prediction-market series; the WRDS files above are comparison signals, not substitutes. |
+| Kalshi and Polymarket climate-event contracts | Actual event probabilities and price paths for hurricane, named-storm, and city-temperature markets | Daily Tier 1 discovery snapshots; full public history endpoints supported separately | Off-WRDS; platform/API terms must be reviewed at pull time | Puller implemented and first complete snapshots archived 2026-09-03. Daily metadata capture is scheduled separately from large historical backfills. |
 
 ## NOAA billion-dollar disasters caveat
 

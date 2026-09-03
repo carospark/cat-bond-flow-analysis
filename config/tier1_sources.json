@@ -134,6 +134,30 @@
       "parser": null
     },
     {
+      "id": "swiss_re_ils_market_insights_feb_2026_landing",
+      "stage": "tier1",
+      "group": "primary_market_cross_checks",
+      "publisher": "Swiss Re Capital Markets",
+      "title": "ILS Market Insights: February 2026 landing page",
+      "url": "https://www.swissre.com/our-business/alternative-capital-partners/ils-market-insights-february-2026.html",
+      "filename": "swiss_re_ils_market_insights_february_2026.html",
+      "frequency": "semi-annual; snapshot landing page",
+      "coverage": "Calendar 2025 headline results; report PDF remains form-gated",
+      "parser": null
+    },
+    {
+      "id": "swiss_re_ils_market_insights_jul_2026_landing",
+      "stage": "tier1",
+      "group": "primary_market_cross_checks",
+      "publisher": "Swiss Re Capital Markets",
+      "title": "ILS Market Insights: July 2026 landing page",
+      "url": "https://www.swissre.com/our-business/alternative-capital-partners/ils-market-insights-july-2026.html",
+      "filename": "swiss_re_ils_market_insights_july_2026.html",
+      "frequency": "semi-annual; snapshot landing page",
+      "coverage": "First half 2026 headline results; report PDF remains form-gated",
+      "parser": null
+    },
+    {
       "id": "gallagher_securities_ils_2025",
       "stage": "tier1",
       "group": "primary_market_cross_checks",

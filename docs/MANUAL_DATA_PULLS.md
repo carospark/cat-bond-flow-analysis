@@ -1,0 +1,61 @@
+# Manual and authenticated data pulls
+
+These sources cannot be completed by the public pullers. Raw files and exact
+account-linked provenance stay local and gitignored.
+
+## Bloomberg: Swiss Re Cat Bond Indices
+
+At a licensed Bloomberg terminal, export weekly date/value history from the
+earliest available date through the export date for:
+
+- `SRCATTRR` and `SRCATPRC`: aggregate total- and price-return indices.
+- `SRBBTRR` and `SRBBPRC`: BB-rated total- and price-return indices.
+- `SRUSWTRR` and `SRUSWPRC`: U.S.-wind total- and price-return indices.
+
+The Swiss Re methodology says coverage begins in January 2002. Confirm at the
+terminal whether the originally requested `SRCATPRR` is now an alias for
+`SRCATPRC`; do not merge the two names without that check. Preserve ticker,
+field name, frequency, currency/unit, terminal export timestamp, and any
+missing-value flags. Store the export under
+`data/raw/tier1/manual/bloomberg/` and record its hash and row coverage in
+`data/MANIFEST.local.md`.
+
+Acceptance checks: dates parse and sort uniquely; all six series are weekly;
+the aggregate series start near January 2002; values are not silently
+forward-filled; and price-return is not mislabeled total-return.
+
+## WRDS: raw TRACE 144A transactions
+
+The archived TRACE and FISD extracts are security/issuer masters, not trades.
+Once the independently produced cat-bond CUSIP universe is available, query
+`trace_enhanced.trace_btds144a_enhanced` for only those identifiers. If the
+enhanced table cannot cover part of the requested window, document and use the
+standard 144A trade table for that portion.
+
+Save the query ID, execution/export timestamps, selected columns, date and
+CUSIP screens, row count, coverage, and WRDS Cloud export location locally.
+Preserve cancellation, correction, reversal, dissemination, and sequence
+fields so cleaning can be audited. Do not commit or redistribute the export.
+
+This pull is intentionally queued: defining its identifier screen depends on
+the separate deal-to-CUSIP work and is outside this non-Artemis pass.
+
+## Swiss Re 2026 ILS Market Insights
+
+Download the February and July 2026 publications through the publisher's form:
+
+- `https://www.swissre.com/our-business/alternative-capital-partners/ils-market-insights-february-2026.html`
+- `https://www.swissre.com/our-business/alternative-capital-partners/ils-market-insights-july-2026.html`
+
+Automated requests returned HTTP 403 and no stable public PDF endpoint was
+verified. After a manual browser download, confirm each file is a readable PDF,
+record the landing page and download timestamp, hash it, and place it under
+`data/raw/tier1/manual/swiss_re_ils/`. A landing-page response alone does not
+count as an archived publication.
+
+## Brookmont 2026 NAV history
+
+The issuer page currently exposes current NAV and holdings, but its embedded
+historical NAV array stops at 2025-12-31. Fill the gap only from an official
+issuer, administrator, or clearly documented market-data NAV feed. Exchange
+closes are market prices and must remain a separate series.

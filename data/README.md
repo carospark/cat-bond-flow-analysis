@@ -8,6 +8,7 @@ Expected layout once populated locally:
 data/
   raw/tier1/<pull-date>/<source-id>/    publisher payloads (gitignored)
   raw/wrds/<query-date>/                licensed exports (gitignored)
+  processed/reference_series/           extracted broker series (gitignored)
   MANIFEST.local.md                     exact provenance (gitignored)
   *.csv                                 derived tables (gitignored)
 ```

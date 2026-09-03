@@ -18,9 +18,13 @@ raw/
 /raw
 data/raw/
 /data/raw
+data/processed/
+/data/processed
 data/*.csv
 data/*.parquet
 data/MANIFEST.local.md
+data/.daily-non-artemis-pull.lock/
+data/daily-non-artemis-pull.*.log
 
 # Working notes
 REVIEW_ROUND*.md
