@@ -91,6 +91,32 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(pending, [])
             store.close()
 
+    def test_unresolved_kalshi_contracts_are_pruned_with_jobs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            store = Store(Path(temporary) / "history.sqlite3")
+            for identifier, status, result in (
+                    ("open", "initialized", ""), ("done", "finalized", "yes")):
+                store.upsert_contract({
+                    "platform": "kalshi", "contract_id": identifier,
+                    "event_id": "e", "series_id": "s",
+                    "classification": "city_temperature", "title": identifier,
+                    "opened_at": "2025-01-01T00:00:00+00:00",
+                    "closed_at": "2025-01-02T00:00:00+00:00",
+                    "outcome_ids_json": "[]",
+                    "metadata_json": json.dumps({"status": status, "result": result}),
+                    "discovered_at": "2025-01-02T00:00:00+00:00",
+                })
+            store.history_result("kalshi", "open", "prices", "complete", 0)
+            self.assertEqual(store.prune_unresolved_kalshi(), 1)
+            identifiers = [row[0] for row in store.connection.execute(
+                "SELECT contract_id FROM contracts ORDER BY contract_id"
+            )]
+            self.assertEqual(identifiers, ["done"])
+            self.assertEqual(store.connection.execute(
+                "SELECT COUNT(*) FROM history_jobs"
+            ).fetchone()[0], 0)
+            store.close()
+
 
 if __name__ == "__main__":
     unittest.main()

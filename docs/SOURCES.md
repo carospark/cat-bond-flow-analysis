@@ -70,7 +70,9 @@ separately from the daily open-contract snapshot. Its default window is the
 latest ten years, processed newest-to-oldest. Completed discovery, price, and
 trade jobs are checkpointed in
 `data/raw/tier1/prediction_market_history.sqlite3`, so interrupted runs resume
-without repeating completed API calls.
+without repeating completed API calls. Kalshi contracts that are still open or
+initialized are explicitly excluded even when their scheduled close timestamp
+falls inside the requested window.
 
 For Kalshi, the job discovers relevant `Climate and Weather` series and merges
 recent market data with the exchange's historical tier using the current

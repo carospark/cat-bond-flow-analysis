@@ -288,6 +288,31 @@ class Store:
         ]
         return result
 
+    def prune_unresolved_kalshi(self) -> int:
+        unresolved = []
+        for row in self.connection.execute(
+                "SELECT contract_id,metadata_json FROM contracts WHERE platform='kalshi'"):
+            metadata = json.loads(row["metadata_json"])
+            status = str(metadata.get("status") or "").lower()
+            if status not in {"closed", "settled", "finalized"} and not metadata.get("result"):
+                unresolved.append(row["contract_id"])
+        for contract_id in unresolved:
+            parameters = ("kalshi", contract_id)
+            self.connection.execute(
+                "DELETE FROM price_points WHERE platform=? AND contract_id=?", parameters
+            )
+            self.connection.execute(
+                "DELETE FROM trades WHERE platform=? AND contract_id=?", parameters
+            )
+            self.connection.execute(
+                "DELETE FROM history_jobs WHERE platform=? AND contract_id=?", parameters
+            )
+            self.connection.execute(
+                "DELETE FROM contracts WHERE platform=? AND contract_id=?", parameters
+            )
+        self.connection.commit()
+        return len(unresolved)
+
 
 def effective_close(metadata: dict[str, Any]) -> str:
     return str(
@@ -314,7 +339,7 @@ def discover_kalshi(store: Store, client: HistoryClient, start: datetime, end: d
     inserted = 0
     for number, series in enumerate(sorted(series_rows, key=lambda row: str(row.get("ticker"))), 1):
         series_id = str(series.get("ticker") or "")
-        job_key = f"{classification or 'all'}:{series_id}"
+        job_key = f"{classification or 'all'}:{end.date()}:{series_id}"
         if not series_id or store.job_done("discovery_jobs", "kalshi", job_key):
             continue
         try:
@@ -329,6 +354,9 @@ def discover_kalshi(store: Store, client: HistoryClient, start: datetime, end: d
             markets = {str(row.get("ticker")): row for row in [*archived, *recent] if row.get("ticker")}
             found = 0
             for market in markets.values():
+                status = str(market.get("status") or "").lower()
+                if status not in {"closed", "settled", "finalized"} and not market.get("result"):
+                    continue
                 closed_at = effective_close(market)
                 if not in_window(closed_at, start, end):
                     continue
@@ -683,6 +711,10 @@ def main() -> int:
                     store, client, start, end, args.discovery_window_days,
                     args.classification,
                 )
+        if "kalshi" in platforms:
+            pruned = store.prune_unresolved_kalshi()
+            if pruned:
+                print(f"[kalshi prune] removed {pruned} unresolved contracts", flush=True)
         if args.stage != "discovery":
             if "kalshi" in platforms:
                 backfill_kalshi(
