@@ -54,6 +54,15 @@ def backwards_windows(start: datetime, end: datetime, days: int) -> Iterable[tup
         cursor = window_start
 
 
+def backwards_epoch_windows(start: int, end: int, days: int) -> Iterable[tuple[int, int]]:
+    cursor = end
+    window_seconds = days * 86400
+    while cursor >= start:
+        window_start = max(start, cursor - window_seconds)
+        yield window_start, cursor
+        cursor = window_start - 1
+
+
 class HistoryClient(PublicClient):
     def post_json(self, url: str, payload: dict[str, Any]) -> Any:
         for attempt in range(self.retries):
@@ -215,7 +224,7 @@ class Store:
                  LEFT JOIN history_jobs j ON j.platform=c.platform
                    AND j.contract_id=c.contract_id AND j.stage=?
                  WHERE c.platform=? AND c.closed_at>=? AND c.closed_at<?
-                   AND COALESCE(j.status,'')!='complete'"""
+                   AND COALESCE(j.status,'') NOT IN ('complete','unavailable')"""
         params: list[Any] = [stage, platform, start, end]
         if classification:
             sql += " AND (';'||c.classification||';') LIKE ?"
@@ -273,7 +282,8 @@ class Store:
         result["pending_or_failed"] = [
             dict(row) for row in self.connection.execute(
                 """SELECT platform,stage,status,COUNT(*) AS count FROM history_jobs
-                   WHERE status!='complete' GROUP BY platform,stage,status"""
+                   WHERE status NOT IN ('complete','unavailable')
+                   GROUP BY platform,stage,status"""
             )
         ]
         return result
@@ -449,16 +459,26 @@ def backfill_kalshi(store: Store, client: HistoryClient, start: datetime,
             closed = _epoch(contract["closed_at"], int(end.timestamp()))
             try:
                 if stage == "prices":
+                    historical_url = (
+                        f"{KALSHI_BASE}/historical/markets/{contract_id}/candlesticks"
+                    )
+                    recent_url = (
+                        f"{KALSHI_BASE}/series/{contract['series_id']}/markets/"
+                        f"{contract_id}/candlesticks"
+                    )
                     if closed < market_cutoff:
-                        url = f"{KALSHI_BASE}/historical/markets/{contract_id}/candlesticks"
+                        url, alternate_url = historical_url, recent_url
                     else:
-                        url = (
-                            f"{KALSHI_BASE}/series/{contract['series_id']}/markets/"
-                            f"{contract_id}/candlesticks"
-                        )
-                    payload = client.json(url, {
+                        url, alternate_url = recent_url, historical_url
+                    candle_params = {
                         "start_ts": opened, "end_ts": closed, "period_interval": 1440,
-                    })
+                    }
+                    try:
+                        payload = client.json(url, candle_params)
+                    except requests.HTTPError as exc:
+                        if exc.response is None or exc.response.status_code != 404:
+                            raise
+                        payload = client.json(alternate_url, candle_params)
                     points = []
                     for candle in payload.get("candlesticks", []):
                         timestamp = int(candle.get("end_period_ts") or 0)
@@ -499,6 +519,16 @@ def backfill_kalshi(store: Store, client: HistoryClient, start: datetime,
                     added = store.add_trades(rows)
                 store.history_result("kalshi", contract_id, stage, "complete", added)
                 print(f"[kalshi {stage} {number}/{len(contracts)}] {contract_id}: {added}", flush=True)
+            except requests.HTTPError as exc:
+                if stage == "prices" and exc.response is not None and exc.response.status_code == 404:
+                    store.history_result(
+                        "kalshi", contract_id, stage, "unavailable", 0,
+                        "No candlestick archive in either Kalshi tier (HTTP 404)",
+                    )
+                    print(f"[kalshi {stage} unavailable] {contract_id}: HTTP 404", flush=True)
+                    continue
+                store.history_result("kalshi", contract_id, stage, "error", 0, str(exc))
+                print(f"[kalshi {stage} error] {contract_id}: {exc}", flush=True)
             except Exception as exc:
                 store.history_result("kalshi", contract_id, stage, "error", 0, str(exc))
                 print(f"[kalshi {stage} error] {contract_id}: {exc}", flush=True)
@@ -534,11 +564,23 @@ def backfill_polymarket_prices(store: Store, client: HistoryClient, start: datet
                 store.history_result("polymarket", contract["contract_id"], "prices", "complete", 0)
             continue
         try:
-            payload = client.post_json(f"{POLYMARKET_CLOB}/batch-prices-history", {
-                "markets": tokens, "start_ts": int(start.timestamp()),
-                "end_ts": int(end.timestamp()), "fidelity": 60,
-            })
-            histories = payload.get("history", {})
+            batch_start = max(
+                int(start.timestamp()),
+                min(_epoch(contract["opened_at"], int(start.timestamp())) for contract in batch),
+            )
+            batch_end = min(
+                int(end.timestamp()),
+                max(_epoch(contract["closed_at"], int(end.timestamp())) for contract in batch),
+            )
+            histories: dict[str, list[dict[str, Any]]] = {token: [] for token in tokens}
+            for window_start, window_end in backwards_epoch_windows(
+                    batch_start, batch_end, 7):
+                payload = client.post_json(f"{POLYMARKET_CLOB}/batch-prices-history", {
+                    "markets": tokens, "start_ts": window_start,
+                    "end_ts": window_end, "fidelity": 60,
+                })
+                for token, points in payload.get("history", {}).items():
+                    histories.setdefault(str(token), []).extend(points)
             for contract in batch:
                 rows = []
                 for token in _json_list(contract["outcome_ids_json"]):

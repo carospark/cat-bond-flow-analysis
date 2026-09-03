@@ -11,9 +11,9 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from backfill_prediction_market_history import (  # noqa: E402
     Store,
+    backwards_epoch_windows,
     backwards_windows,
     historical_polymarket_rows,
-    polymarket_price_batches,
 )
 
 
@@ -27,6 +27,12 @@ class WindowTests(unittest.TestCase):
         ))
         self.assertEqual(windows[-1][0], start)
         self.assertEqual(windows[0][0], windows[1][1])
+
+    def test_epoch_windows_are_newest_first_and_do_not_overlap(self):
+        windows = list(backwards_epoch_windows(0, 200_000, 1))
+        self.assertEqual(
+            windows, [(113_600, 200_000), (27_199, 113_599), (0, 27_198)]
+        )
 
 
 class HistoricalContractTests(unittest.TestCase):
@@ -74,12 +80,14 @@ class StoreTests(unittest.TestCase):
             )
             self.assertEqual(hurricane_only, [])
             store.history_result("polymarket", "new", "prices", "complete", 2)
+            store.history_result(
+                "polymarket", "old", "prices", "unavailable", 0, "publisher gap"
+            )
             pending = store.contracts(
                 "polymarket", "2025-01-01T00:00:00+00:00",
                 "2025-01-04T00:00:00+00:00", "prices",
             )
-            self.assertEqual([row["contract_id"] for row in pending], ["old"])
-            self.assertEqual(len(list(polymarket_price_batches(pending))), 1)
+            self.assertEqual(pending, [])
             store.close()
 
 

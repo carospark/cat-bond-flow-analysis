@@ -76,6 +76,8 @@ For Kalshi, the job discovers relevant `Climate and Weather` series and merges
 recent market data with the exchange's historical tier using the current
 cutoff. For Polymarket, it searches closed events in reverse-chronological
 windows and batches up to 20 outcome-token price histories per request. The
+price backfill also slices each batch into seven-day intervals because the
+public endpoint rejects longer ranges for hourly fidelity. The
 classes can be backfilled independently: hurricane/named-storm history comes
 first because it is the direct cat-bond information signal; the much larger
 city-temperature universe follows.
