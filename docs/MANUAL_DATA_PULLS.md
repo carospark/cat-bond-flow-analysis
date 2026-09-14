@@ -29,7 +29,9 @@ forward-filled; and price-return is not mislabeled total-return.
 **Completed 2026-09-03.** The archived TRACE and FISD extracts are
 security/issuer masters, not trades. Once the independently produced cat-bond
 CUSIP universe was available, `trace_enhanced.trace_btds144a_enhanced` was
-queried for only those identifiers over the 2002-2025 request window. The
+queried for a curated identifier screen over the 2002-2025 request window.
+That screen was broader than the deal-to-CUSIP bridge and its exact list was
+not saved; recovering it from the WRDS query history is an open follow-up. The
 enhanced table ended in early December 2025 at pull time, so the standard 144A
 trade table was used for the tail through early June 2026, as this document
 allowed. Each table was pulled in four CUSIP batches.
