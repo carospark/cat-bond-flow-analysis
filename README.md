@@ -5,7 +5,7 @@ to get from *what was issued* to *how capital actually moved*.
 
 **Status: early. The joins are being built and validated; the flow model is not.**
 
-Companion to [`cat_bond_fund_flow`](https://github.com/carospark/cat_bond_fund_flow),
+Companion to [`cat-bond-issuance`](https://github.com/carospark/cat-bond-issuance),
 which parses the issuance side. This repository consumes its output.
 
 ---
