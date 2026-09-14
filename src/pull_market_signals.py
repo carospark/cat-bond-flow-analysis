@@ -47,16 +47,37 @@ WEATHER_PATTERNS = {
 }
 
 SPORTS_HURRICANE_PATTERN = re.compile(
-    r"\b(?:NHL|Stanley Cup|playoffs?|conference|division|team|Carolina Hurricanes)\b",
+    r"\b(?:NHL|NCAA|NFL|NBA|MLB|Stanley Cup|playoffs?|conference|division|team|"
+    r"Carolina Hurricanes|Miami Hurricanes|Tulsa Golden Hurricane|Golden Hurricane|"
+    r"Super Rugby|rugby|football|basketball|hockey|cricket|soccer|"
+    r"match|draw|vs\.?|versus|win\?|winner|score|spread|moneyline|BTTS)\b",
     re.IGNORECASE,
 )
 
+# A storm-context token must describe weather, not a place name inside a team
+# name. Bare "atlantic" or "pacific" is not enough: Florida Atlantic and Super
+# Rugby Pacific both contain them.
 WEATHER_STORM_CONTEXT = re.compile(
-    r"\b(?:atlantic|pacific|gulf|tropical|weather|wind speed|landfall|"
-    r"category [1-5]|named storm|storm season)\b|"
+    r"\b(?:atlantic|pacific|gulf)\s+(?:hurricanes?|storms?|basins?|seasons?|ocean|"
+    r"coast|tropical|named|cyclones?|typhoons?)\b|"
+    r"\b(?:central|eastern|western|east|west|north|south|northwest)\s+"
+    r"(?:atlantic|pacific)\b|"
+    r"\b(?:in|of|across|for)\s+the\s+(?:atlantic|pacific|gulf)\b|"
+    r"\b(?:tropical|weather|wind speed|landfall|category [1-5]|cat [1-5]\+?|"
+    r"named storm|storm season|hurricane season|major hurricane|typhoons?|"
+    r"national hurricane center|NHC|NOAA|CSU)\b|"
     r"\bhurricanes?\s+(?:hits?|makes? landfall|forms?|season|count|total|"
-    r"named|reaches?|becomes?)\b|"
-    r"\b(?:how many|number of|first|major)\s+(?:atlantic |pacific )?hurricanes?\b",
+    r"named|reaches?|becomes?|strengthens?|peaks?)\b|"
+    r"\b(?:how many|number of|first|next|major|another|any)\s+"
+    r"(?:atlantic |pacific )?hurricanes?\b",
+    re.IGNORECASE,
+)
+
+# When sports vocabulary is present, only an unambiguous storm token keeps the
+# contract.
+STRONG_STORM_TOKEN = re.compile(
+    r"\b(?:landfall|named storms?|tropical storms?|tropical cyclones?|wind speed|"
+    r"category [1-5]|hurricane season|major hurricane|national hurricane center)\b",
     re.IGNORECASE,
 )
 
@@ -99,9 +120,8 @@ def classify_weather_contract(*parts: Any) -> list[str]:
     matches = [name for name, pattern in WEATHER_PATTERNS.items() if pattern.search(text)]
     if "hurricane_or_named_storm" in matches:
         if (not WEATHER_STORM_CONTEXT.search(text)
-                or SPORTS_HURRICANE_PATTERN.search(text)
-                and not re.search(r"\b(?:landfall|named storm|tropical storm|wind speed)\b",
-                                  text, re.IGNORECASE)):
+                or (SPORTS_HURRICANE_PATTERN.search(text)
+                    and not STRONG_STORM_TOKEN.search(text))):
             matches.remove("hurricane_or_named_storm")
     return matches
 

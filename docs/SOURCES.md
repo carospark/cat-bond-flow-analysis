@@ -85,11 +85,62 @@ first because it is the direct cat-bond information signal; the much larger
 city-temperature universe follows.
 
 The city-temperature universe discovered on 2026-09-03 contains 197,884
-resolved Kalshi contracts and 120,613 resolved Polymarket contracts. Because
-their histories are substantially larger than the storm dataset, a separate
-03:15 local-time LaunchAgent processes up to 5,000 of the newest remaining
-contracts per platform and stage each night. It resumes from the same SQLite
-checkpoints and never invokes Artemis code.
+resolved Kalshi contracts and 120,613 resolved Polymarket contracts. Their
+history backfill was run nightly until 2026-09-14 and then deferred: these
+are hourly forecast markets with no link to insured loss or any cat-bond
+trigger, so they belong to a separate project. The 03:15 local-time
+LaunchAgent now targets the hurricane and named-storm class, which is fully
+backfilled, so each nightly run only picks up newly resolved contracts.
+Discovery of both classes continues in the daily snapshot. The partial
+temperature history already stored is retained; note that the Kalshi
+candlestick request uses a daily interval, which returns nothing for
+sub-day markets, so that partial history is trades-complete but
+candle-sparse.
+
+On 2026-09-14 the storm classifier was tightened after 55 Polymarket sports
+contracts (Super Rugby Pacific and college teams named Hurricanes) had passed
+the guard because "Pacific" and "Atlantic" appeared in team or league names.
+Basin words now need a weather neighbour, and sports vocabulary requires an
+unambiguous storm token. Those 55 contracts and their history rows were
+removed from the local database; earlier raw snapshot CSVs are archives and
+were left as pulled.
+
+### Hazard coverage: cat-bond perils versus prediction markets
+
+Reconciled 2026-09-14 against the parsed deal directory (1,311 deals; peril
+strings are free text, so one deal can count under several rows), the full
+Kalshi series list (14,018 series), and Polymarket keyword search. The
+reinsurance comparators (Guy Carpenter, Howden, Aon rate-on-line series) are
+all-peril property-cat indices with no peril split, so the mapping runs
+through the cat-bond perils.
+
+| Peril | Deals (since 2021) | Kalshi | Polymarket | Coverage |
+|---|---:|---|---|---|
+| U.S. hurricane / named storm | 648 (298) | Seasonal counts, major counts, tropical-storm counts, first-hurricane naming, city landfall (Miami, NYC, Orlando, New Orleans, Tampa, Houston, Charleston, Savannah, Wilmington, Jacksonville, Myrtle Beach, Hatteras, Norfolk, Texas coast, California), path markets | Seasonal named-storm counts 2021-2026, monthly and seasonal U.S. landfall, storm-specific landfall and category (Helene, Milton, Melissa, Beryl, Idalia, Lee, Imelda, Francine), CSU forecast, first-hurricane timing, Hawaii landfall | Pulled and fully backfilled |
+| U.S. earthquake (incl. California) | 454 (190) | Earthquake in California, Earthquake in LA, monthly and M7 earthquake, biggest earthquake | LA M6.5+ before 2026, M7+ by month, weekly global M5.5+/M6.5+ counts, highest magnitude 2026 | Available, not yet pulled |
+| Severe convective storm | 186 (100) | Number of tornadoes | Monthly and annual U.S. tornado counts, daily city tornado risk | Tornado only, not yet pulled; no hail market on either exchange |
+| European windstorm | 132 (28) | none | none | Not available |
+| Canada perils | 126 (81) | none | none | Not available |
+| Wildfire | 118 (74) | none | LA / Palisades event markets, January 2025 (containment, acres, spread) | Event-driven only, not yet pulled |
+| Winter storm / freeze | 96 (50) | Monthly city snowfall (NYC, Chicago, Denver, Dallas, Houston, Austin, Seattle, San Francisco, LA, Phoenix, Alta) | NYC and D.C. snowfall inches, first snow, where it snows | Proxy only: snowfall is not freeze or ice loss |
+| Japan earthquake | 86 (20) | Earthquake in Japan, July 2025 Japan event | none Japan-specific | Kalshi only, not yet pulled |
+| Volcanic eruption | 61 (35) | Supervolcano | VEI 4+ count 2026, VEI 6+ 2026, Vesuvius, Etna, Iceland 2023 | Available, not yet pulled |
+| Mortgage insurance | 60 (27) | n/a | n/a | Not a hazard; out of scope |
+| Meteorite impact | 59 (33) | none | none | Not available |
+| Flood | 43 (24) | none | White River crest August 2026, LA flooding 2023 | Sparse, event-driven |
+| Mexico / Latin America / Caribbean | 39 (18) | none | none region-specific | Not available |
+| Japan typhoon | 34 (11) | none | NW Pacific named-typhoon count, Typhoon Dolphin (Japan, China, landfall intensity), Saudel, Honshu landfall, China landfall count | Polymarket only, not yet pulled |
+| Australia cyclone | 21 (4) | none | none | Not available |
+| Extreme mortality / pandemic | 20 (2) | New pandemic and PHEIC series by pathogen | New pandemic 2024-2028, bird flu, hantavirus, Ebola, measles, COVID | Available, not yet pulled |
+| Medical benefit / health | 17 (6) | none | none | Not available |
+| Cyber | 11 (11) | none | none on attack occurrence | Not available |
+| Terrorism | 6 (5) | none | designation questions only | Not available |
+| Drought / heat / crop | 3 (0) | Drought level | D4 drought by state weekly, crop and cattle drought share, Paris heat wave | Available; negligible cat-bond exposure |
+
+Cross-cutting signals worth pulling alongside the peril markets: Kalshi FEMA
+disaster-declaration counts and El Niño declaration; Polymarket "Natural
+Disaster in 2026", the billion-dollar-disaster record market, and Super El
+Niño / peak RONI. These condition the season rather than a single peril.
 
 ## Licensed WRDS inputs archived 2026-08-31
 
@@ -282,7 +333,7 @@ which must be archived immediately and repeatedly.
 | MarketPsych Country Sentiment | Daily natural-disaster and weather-event buzz/sentiment for aligning media attention with probability and price changes | Daily, 1998-01-01 through 2025-12-31 in the current US/UK pull | Licensed Penn WRDS research input; do not redistribute | US/UK country extract archived. City-level NYC/London coverage remains a possible later pull. |
 | RavenPack RPA 1.0 | Intraday warning and warning-lifted event taxonomy for defining ex-ante catastrophe information shocks | Taxonomy current at pull; underlying event data described as 2000 onward | Licensed Penn WRDS research input; do not redistribute | Full taxonomy archived. Entity mapping and timestamped Global Macro events are not yet pulled. |
 | OptionMetrics IvyDB US | Option-implied tail risk for insurers, reinsurers, and insurance ETFs | Daily, 1996 onward according to the saved WRDS audit | Licensed Penn WRDS research input | Planned; no data export archived yet. |
-| Kalshi and Polymarket climate-event contracts | Actual event probabilities and price paths for hurricane, named-storm, and city-temperature markets | Daily Tier 1 discovery snapshots; full public history endpoints supported separately | Off-WRDS; platform/API terms must be reviewed at pull time | Puller implemented and first complete snapshots archived 2026-09-03. Daily metadata capture is scheduled separately from large historical backfills. |
+| Kalshi and Polymarket climate-event contracts | Actual event probabilities and price paths for hurricane, named-storm, and city-temperature markets | Daily Tier 1 discovery snapshots; full public history endpoints supported separately | Off-WRDS; platform/API terms must be reviewed at pull time | Puller implemented and first complete snapshots archived 2026-09-03. Daily metadata capture is scheduled separately from historical backfills. Storm class fully backfilled; temperature history deferred 2026-09-14. See the hazard coverage table for perils not yet covered. |
 
 ## NOAA billion-dollar disasters caveat
 

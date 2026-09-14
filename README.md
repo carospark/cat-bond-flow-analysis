@@ -118,8 +118,11 @@ completed work from a gitignored SQLite database.
 
 `scripts/install_macos_prediction_history_backfill.sh` installs a separate
 03:15 local-time LaunchAgent. Each run processes up to 5,000 of the newest
-remaining city-temperature contracts per platform for prices, then trades.
-Completed or publisher-unavailable jobs are skipped automatically.
+remaining hurricane and named-storm contracts per platform for prices, then
+trades. Completed or publisher-unavailable jobs are skipped automatically.
+City-temperature contracts are still discovered and archived daily, but their
+history backfill is deferred: they are hourly forecast markets with no link to
+insured loss, and belong to a separate project.
 
 Both LaunchAgents run `/bin/zsh` from `launchd`, which has no access to
 macOS-protected folders (Desktop, Documents, Downloads, iCloud Drive). If the

@@ -41,6 +41,43 @@ class WeatherFilterTests(unittest.TestCase):
         self.assertEqual(classify_weather_contract("Official daily high price of crude oil"), [])
         self.assertEqual(classify_weather_contract("Global warming policy enacted?"), [])
 
+    def test_team_names_with_basin_words_are_not_selected(self):
+        # Super Rugby Pacific: "Pacific" in the event description is a league, not a basin.
+        self.assertEqual(
+            classify_weather_contract(
+                "Hurricanes vs Blues", "Super Rugby Pacific round 4 match between the "
+                "Hurricanes and the Blues.", "Will Hurricanes win?",
+            ),
+            [],
+        )
+        self.assertEqual(
+            classify_weather_contract(
+                "Hurricanes vs Blues", "Super Rugby Pacific match.",
+                "Will the match end in a draw?",
+            ),
+            [],
+        )
+        # College sports: "Florida Atlantic" is a university.
+        self.assertEqual(
+            classify_weather_contract("Florida Atlantic Owls vs. Miami Hurricanes (W)"), [],
+        )
+        self.assertEqual(
+            classify_weather_contract("Tulsa Golden Hurricane vs. Florida Atlantic Owls"), [],
+        )
+
+    def test_real_storm_contracts_survive_the_sports_guard(self):
+        for text in (
+            "Will the next Pacific hurricane form between August 27 and August 31, 2026?",
+            "Will Winnie be the first named hurricane in the Central Pacific in 2026?",
+            "Will there be more than 25 named storms during Atlantic Hurricane Season?",
+            "Will Tropical Storm Saudel peak as a \"Violent Typhoon\"?",
+            "Will Idalia hit Florida as a major hurricane?",
+            "Cat 3+ hurricane hits Miami in 2025?",
+            "Will a hurricane make landfall in the US in September?",
+            "Where will a hurricane make landfall in the US during the 2026 hurricane season?",
+        ):
+            self.assertEqual(classify_weather_contract(text), ["hurricane_or_named_storm"], text)
+
 
 class PolymarketTests(unittest.TestCase):
     def test_keyset_pagination_uses_returned_cursor(self):

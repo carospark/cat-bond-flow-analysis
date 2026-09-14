@@ -23,12 +23,12 @@ BATCH_SIZE="5000"
 
 for platform in kalshi polymarket; do
   "$PYTHON" src/backfill_prediction_market_history.py --since "$SINCE" --until "$UNTIL" \
-    --platform "$platform" --classification city_temperature \
+    --platform "$platform" --classification hurricane_or_named_storm \
     --stage prices --max-contracts "$BATCH_SIZE"
 done
 
 for platform in kalshi polymarket; do
   "$PYTHON" src/backfill_prediction_market_history.py --since "$SINCE" --until "$UNTIL" \
-    --platform "$platform" --classification city_temperature \
+    --platform "$platform" --classification hurricane_or_named_storm \
     --stage trades --max-contracts "$BATCH_SIZE"
 done
