@@ -22,6 +22,7 @@ data/processed/
 /data/processed
 data/*.csv
 data/*.parquet
+data/*.json
 data/MANIFEST.local.md
 data/.daily-non-artemis-pull.lock/
 data/daily-non-artemis-pull.*.log
