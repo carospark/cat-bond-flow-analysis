@@ -89,9 +89,10 @@ resolved Kalshi contracts and 120,613 resolved Polymarket contracts. Their
 history backfill was run nightly until 2026-09-14 and then deferred: these
 are hourly forecast markets with no link to insured loss or any cat-bond
 trigger, so they belong to a separate project. The 03:15 local-time
-LaunchAgent now targets the hurricane and named-storm class, which is fully
-backfilled, so each nightly run only picks up newly resolved contracts.
-Discovery of both classes continues in the daily snapshot. The partial
+LaunchAgent now loops over every hazard class with a cat-bond counterpart
+(see the coverage table below), running discovery, prices, and trades for each
+with a moving end date, so newly resolved contracts keep being discovered.
+Discovery of city temperature continues in the daily snapshot. The partial
 temperature history already stored is retained; note that the Kalshi
 candlestick request uses a daily interval, which returns nothing for
 sub-day markets, so that partial history is trades-complete but
@@ -114,33 +115,40 @@ reinsurance comparators (Guy Carpenter, Howden, Aon rate-on-line series) are
 all-peril property-cat indices with no peril split, so the mapping runs
 through the cat-bond perils.
 
-| Peril | Deals (since 2021) | Kalshi | Polymarket | Coverage |
+| Peril | Deals (since 2021) | Kalshi | Polymarket | Class and status |
 |---|---:|---|---|---|
-| U.S. hurricane / named storm | 648 (298) | Seasonal counts, major counts, tropical-storm counts, first-hurricane naming, city landfall (Miami, NYC, Orlando, New Orleans, Tampa, Houston, Charleston, Savannah, Wilmington, Jacksonville, Myrtle Beach, Hatteras, Norfolk, Texas coast, California), path markets | Seasonal named-storm counts 2021-2026, monthly and seasonal U.S. landfall, storm-specific landfall and category (Helene, Milton, Melissa, Beryl, Idalia, Lee, Imelda, Francine), CSU forecast, first-hurricane timing, Hawaii landfall | Pulled and fully backfilled |
-| U.S. earthquake (incl. California) | 454 (190) | Earthquake in California, Earthquake in LA, monthly and M7 earthquake, biggest earthquake | LA M6.5+ before 2026, M7+ by month, weekly global M5.5+/M6.5+ counts, highest magnitude 2026 | Available, not yet pulled |
-| Severe convective storm | 186 (100) | Number of tornadoes | Monthly and annual U.S. tornado counts, daily city tornado risk | Tornado only, not yet pulled; no hail market on either exchange |
-| European windstorm | 132 (28) | none | none | Not available |
-| Canada perils | 126 (81) | none | none | Not available |
-| Wildfire | 118 (74) | none | LA / Palisades event markets, January 2025 (containment, acres, spread) | Event-driven only, not yet pulled |
-| Winter storm / freeze | 96 (50) | Monthly city snowfall (NYC, Chicago, Denver, Dallas, Houston, Austin, Seattle, San Francisco, LA, Phoenix, Alta) | NYC and D.C. snowfall inches, first snow, where it snows | Proxy only: snowfall is not freeze or ice loss |
-| Japan earthquake | 86 (20) | Earthquake in Japan, July 2025 Japan event | none Japan-specific | Kalshi only, not yet pulled |
-| Volcanic eruption | 61 (35) | Supervolcano | VEI 4+ count 2026, VEI 6+ 2026, Vesuvius, Etna, Iceland 2023 | Available, not yet pulled |
+| U.S. hurricane / named storm | 648 (298) | Seasonal counts, major counts, tropical-storm counts, first-hurricane naming, city landfall (Miami, NYC, Orlando, New Orleans, Tampa, Houston, Charleston, Savannah, Wilmington, Jacksonville, Myrtle Beach, Hatteras, Norfolk, Texas coast, California), path markets | Seasonal named-storm counts 2021-2026, monthly and seasonal U.S. landfall, storm-specific landfall and category (Helene, Milton, Melissa, Beryl, Idalia, Lee, Imelda, Francine), CSU forecast, first-hurricane timing, Hawaii landfall | `hurricane_or_named_storm`; fully backfilled |
+| U.S. earthquake (incl. California) | 454 (190) | Earthquake in California, Earthquake in LA, monthly and M7 earthquake, biggest earthquake, tsunami | LA M6.5+ before 2026, M7+ by month, weekly global M5.5+/M6.5+ counts, "where will a 6.0+ occur" with region outcomes, highest magnitude 2026, San Francisco tsunami | `earthquake`; pulled from 2026-09-14. Global counts are conditioning signals; `region:california` picks the direct ones |
+| Severe convective storm | 186 (100) | Number of tornadoes | Monthly and annual U.S. tornado counts, daily city tornado risk | `severe_convective_storm`; pulled from 2026-09-14. Tornado only: no hail market exists on either exchange |
+| European windstorm | 132 (28) | none | none: the only wind-speed markets are Mt. Washington (NH) and Wellington (NZ) | `windstorm`, gated to Europe and Australia; nothing exists yet, the class will catch future listings (named-storm gust markets) |
+| Canada perils | 126 (81) | none | none | Canada earthquake and Canada named storm, i.e. the U.S. perils extended north. No Canada-specific market; Atlantic seasonal counts are the nearest proxy and are already pulled |
+| Wildfire | 118 (74) | none | LA / Palisades event markets, January 2025 (containment, acres, spread) | `wildfire`; pulled from 2026-09-14. Event-driven only; no seasonal market |
+| Winter storm / freeze | 96 (50) | Monthly city snowfall (NYC, Chicago, Denver, Dallas, Houston, Austin, Seattle, San Francisco, LA, Phoenix, Alta) | NYC and D.C. snowfall inches | `winter_storm`, gated to U.S. and Canada; pulled from 2026-09-14. Proxy only: snowfall is not freeze or ice loss |
+| Japan earthquake | 86 (20) | Earthquake in Japan, July 2025 Japan event | none Japan-specific | `earthquake` with `region:japan`; pulled from 2026-09-14 |
+| Volcanic eruption | 61 (35) | VEI 4, Supervolcano, Kilauea, Etna, Mount Spurr | VEI 4+ count 2026, VEI 6+ 2026, Vesuvius, Etna, Iceland 2023 | `volcanic_eruption`; pulled from 2026-09-14 |
 | Mortgage insurance | 60 (27) | n/a | n/a | Not a hazard; out of scope |
 | Meteorite impact | 59 (33) | none | none | Not available |
-| Flood | 43 (24) | none | White River crest August 2026, LA flooding 2023 | Sparse, event-driven |
-| Mexico / Latin America / Caribbean | 39 (18) | none | none region-specific | Not available |
-| Japan typhoon | 34 (11) | none | NW Pacific named-typhoon count, Typhoon Dolphin (Japan, China, landfall intensity), Saudel, Honshu landfall, China landfall count | Polymarket only, not yet pulled |
-| Australia cyclone | 21 (4) | none | none | Not available |
-| Extreme mortality / pandemic | 20 (2) | New pandemic and PHEIC series by pathogen | New pandemic 2024-2028, bird flu, hantavirus, Ebola, measles, COVID | Available, not yet pulled |
+| Flood | 43 (24) | Monthly and daily city rain for 17 U.S. cities (NYC, Miami, Houston, New Orleans, Dallas, LA, Chicago, Seattle, San Francisco, Denver, Austin, Columbus, Milwaukee, Providence, Lexington, College Station, St Petersburg, D.C.) | Monthly precipitation NYC and Seattle, daily "where will it rain", White River crest August 2026, LA flooding 2023 | `precipitation`, gated to U.S. and Japan; pulled from 2026-09-14. Rainfall is the nearest proxy for NFIP-style flood exposure; London, Paris, Seoul, and Hong Kong rain markets are excluded because no deal covers them |
+| Mexico / Latin America / Caribbean | 39 (18) | none | "where will a 6.0+ earthquake occur" region outcomes only | Not available beyond the earthquake region outcomes |
+| Japan typhoon | 34 (11) | none | NW Pacific named-typhoon count, Typhoon Dolphin (Japan, China, landfall intensity), Saudel, Honshu landfall, China landfall count | `typhoon_or_cyclone`, gated to Japan, East Asia, and Australia; pulled from 2026-09-14 |
+| Australia cyclone | 21 (4) | none | none: no Queensland, Cyclone Alfred, or Australian wind market found | `typhoon_or_cyclone` and `windstorm` both admit Australia; nothing exists yet |
+| Extreme mortality / pandemic | 20 (2) | Pandemic and PHEIC declaration series by pathogen | New pandemic 2024-2028, bird flu, hantavirus, Ebola, measles, COVID pandemic declarations | `pandemic_or_mortality`; pulled from 2026-09-14. Declaration language only; case counts, boosters, and approvals are excluded |
 | Medical benefit / health | 17 (6) | none | none | Not available |
 | Cyber | 11 (11) | none | none on attack occurrence | Not available |
 | Terrorism | 6 (5) | none | designation questions only | Not available |
-| Drought / heat / crop | 3 (0) | Drought level | D4 drought by state weekly, crop and cattle drought share, Paris heat wave | Available; negligible cat-bond exposure |
+| Drought / heat / crop | 3 (0) | Drought level | D4 drought by state weekly, crop and cattle drought share, Paris heat wave | Not pulled; negligible cat-bond exposure |
 
-Cross-cutting signals worth pulling alongside the peril markets: Kalshi FEMA
-disaster-declaration counts and El Niño declaration; Polymarket "Natural
-Disaster in 2026", the billion-dollar-disaster record market, and Super El
-Niño / peak RONI. These condition the season rather than a single peril.
+Cross-cutting signals pulled alongside the peril markets from 2026-09-14:
+`disaster_declaration` covers Kalshi's FEMA state-declaration counts and its
+"natural disaster hits <city>" series for 14 U.S. cities, plus Polymarket's
+"Natural Disaster in 2026" and billion-dollar-disaster record markets; `enso`
+covers El Niño declaration and RONI on both exchanges. These condition the
+season rather than a single peril.
+
+Searches that came up empty on 2026-09-14, so their classes exist but hold
+nothing: wind speed or gust markets for Europe or Australia (only Mt.
+Washington and Wellington exist), any Canadian hazard market, any Australian
+cyclone or bushfire market, and any hail market.
 
 ## Licensed WRDS inputs archived 2026-08-31
 

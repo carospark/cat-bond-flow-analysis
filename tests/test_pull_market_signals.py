@@ -12,6 +12,7 @@ from pull_market_signals import (  # noqa: E402
     _paginate_keyset,
     _polymarket_contracts,
     classify_weather_contract,
+    hazard_classes,
     parse_climate_central_events,
 )
 
@@ -19,15 +20,15 @@ from pull_market_signals import (  # noqa: E402
 class WeatherFilterTests(unittest.TestCase):
     def test_positive_weather_contracts(self):
         self.assertEqual(
-            classify_weather_contract("How many named storms in the Atlantic?"),
+            hazard_classes(classify_weather_contract("How many named storms in the Atlantic?")),
             ["hurricane_or_named_storm"],
         )
         self.assertEqual(
-            classify_weather_contract("Highest temperature in New York today"),
+            hazard_classes(classify_weather_contract("Highest temperature in New York today")),
             ["city_temperature"],
         )
         self.assertEqual(
-            classify_weather_contract("Daily high temperature in Chicago"),
+            hazard_classes(classify_weather_contract("Daily high temperature in Chicago")),
             ["city_temperature"],
         )
 
@@ -76,7 +77,114 @@ class WeatherFilterTests(unittest.TestCase):
             "Will a hurricane make landfall in the US in September?",
             "Where will a hurricane make landfall in the US during the 2026 hurricane season?",
         ):
-            self.assertEqual(classify_weather_contract(text), ["hurricane_or_named_storm"], text)
+            self.assertEqual(hazard_classes(classify_weather_contract(text)),
+                             ["hurricane_or_named_storm"], text)
+
+    def test_region_tags_follow_the_classes(self):
+        self.assertEqual(
+            classify_weather_contract("Highest temperature in New York today"),
+            ["city_temperature", "region:northeast_us", "region:us"],
+        )
+        # No class, no tags.
+        self.assertEqual(classify_weather_contract("Mayor of New York"), [])
+
+
+class HazardClassTests(unittest.TestCase):
+    def classes(self, *parts, **kwargs):
+        return hazard_classes(classify_weather_contract(*parts, **kwargs))
+
+    def test_earthquake_markets(self):
+        self.assertEqual(self.classes("Earthquake in California"), ["earthquake"])
+        self.assertIn("region:california", classify_weather_contract("Earthquake in California"))
+        self.assertEqual(self.classes("Magnitude 6.5+ earthquake in LA before 2026?"), ["earthquake"])
+        self.assertEqual(self.classes("How many 6.5 or above earthquakes worldwide September 7 - 13?"),
+                         ["earthquake"])
+        self.assertEqual(self.classes("Where will a 6.0+ magnitude earthquake occur by end of September?"),
+                         ["earthquake"])
+        self.assertEqual(self.classes("Tsunami flooding in downtown San Francisco?"),
+                         ["earthquake", "precipitation"])
+        # Sports and politics.
+        self.assertEqual(self.classes("San Jose Earthquakes vs. LA Galaxy"), [])
+        self.assertEqual(self.classes("Will there be a blue tsunami?"), [])
+
+    def test_tornado_and_hail(self):
+        self.assertEqual(self.classes("How many Tornadoes in the US in 2026?"), ["severe_convective_storm"])
+        self.assertEqual(self.classes("Which cities face tornado risk on August 19?"), ["severe_convective_storm"])
+        self.assertEqual(self.classes("Number of Tornadoes"), ["severe_convective_storm"])
+        self.assertEqual(self.classes("Iowa State Cyclones vs. Kansas"), [])
+        self.assertEqual(self.classes("Talladega Tornadoes vs. Alabama A&M Bulldogs (W)"), [])
+        self.assertEqual(self.classes("Geneva Golden Tornadoes vs. Robert Morris Colonials"), [])
+        self.assertEqual(self.classes('"Project Hail Mary" Rotten Tomatoes score?'), [])
+        self.assertEqual(self.classes("Madrid Open: Hailey Baptiste vs Jasmine Paolini"), [])
+
+    def test_wildfire(self):
+        self.assertEqual(self.classes("How many acres will Palisades wildfire burn in total?"), ["wildfire"])
+        self.assertEqual(self.classes("When will the Palisades wildfire be fully contained?"), ["wildfire"])
+        self.assertEqual(self.classes("Trump visits wildfires"), [])
+        self.assertEqual(self.classes("Arsonists arrested in connection with LA wildfires?"), [])
+
+    def test_winter_storm_is_limited_to_deal_geographies(self):
+        self.assertEqual(self.classes("How many inches of snow in NYC in January?"), ["winter_storm"])
+        self.assertEqual(self.classes("Denver snowfall monthly"), ["winter_storm"])
+        self.assertEqual(self.classes("Will it snow in Seoul on Christmas?"), [])
+        self.assertEqual(self.classes("Will Snowflake (SNOW) beat quarterly earnings?"), [])
+        self.assertEqual(self.classes("Winter Games 2026: Snowboard Halfpipe - Women's"), [])
+        # Series-level titles skip the geography gate; markets carry the city.
+        self.assertEqual(self.classes("Where will it snow this December?", strict_regions=False),
+                         ["winter_storm"])
+        self.assertEqual(self.classes("Where will it snow this December?"), [])
+
+    def test_volcano_typhoon_pandemic(self):
+        self.assertEqual(self.classes("How many large volcano eruptions (VEI ≥4) in 2026?"), ["volcanic_eruption"])
+        self.assertEqual(self.classes("Vesuvius eruption with 1+ VEI in 2026?"), ["volcanic_eruption"])
+        self.assertEqual(self.classes("Will Super Typhoon Dolphin hit Japan?"), ["typhoon_or_cyclone"])
+        self.assertEqual(self.classes("How many named typhoons in Northwest Pacific in 2025?"),
+                         ["typhoon_or_cyclone"])
+        # A Pacific-basin hurricane market is not a Japan or Australia cyclone proxy.
+        self.assertEqual(
+            self.classes("Will a tropical cyclone form in either the Pacific or Central Pacific basins by August 14?"),
+            ["hurricane_or_named_storm"],
+        )
+        self.assertEqual(self.classes("Hantavirus pandemic in 2026?"), ["pandemic_or_mortality"])
+        self.assertEqual(self.classes("New bird flu pandemic"), ["pandemic_or_mortality"])
+        self.assertEqual(self.classes("New zombie virus public health emergency"), [])
+        self.assertEqual(self.classes("Bird flu declared PHEIC"), ["pandemic_or_mortality"])
+        # Case counts, boosters, and approvals are not mortality triggers.
+        self.assertEqual(self.classes("NYC COVID daily case average"), [])
+        self.assertEqual(self.classes("COVID boosters this month"), [])
+        self.assertEqual(self.classes("FDA approves COVID pill"), [])
+        self.assertEqual(self.classes("Measles cases in U.S. by April 30?"), [])
+
+    def test_precipitation_and_wind_are_geography_gated(self):
+        self.assertEqual(self.classes("Rain Houston"), ["precipitation"])
+        self.assertEqual(self.classes("Precipitation in NYC in September?"), ["precipitation"])
+        self.assertEqual(self.classes("What will the White River at Indianapolis peak at during the August 2026 floods?"),
+                         ["precipitation"])
+        self.assertEqual(self.classes("Precipitation in London in March?"), [])
+        self.assertEqual(self.classes("Precipitation in Hong Kong in April?"), [])
+        self.assertEqual(self.classes("Daily Rain - Paris"), [])
+        self.assertEqual(self.classes("Will it rain during the Dutch Grand Prix?"), [])
+        self.assertEqual(self.classes("Will Israel start flooding Hamas tunnels by December 15?"), [])
+        # Wind: only Europe and Australia have windstorm and cyclone deals.
+        self.assertEqual(self.classes("Highest Mt. Washington wind speed in September?"), [])
+        self.assertEqual(self.classes("Peak wind gust in the world's windiest city in August"), [])
+        self.assertEqual(self.classes("Will Storm Eowyn bring 100 mph gusts to Ireland?"), ["windstorm"])
+        self.assertEqual(self.classes("Peak wind gust in Brisbane during Cyclone Alfred?"),
+                         ["typhoon_or_cyclone", "windstorm"])
+        self.assertEqual(self.classes("Will an Atlantic Shores offshore wind lease be terminated?"), [])
+
+    def test_disaster_declarations_and_enso(self):
+        self.assertEqual(self.classes("States that declare natural disasters"), ["disaster_declaration"])
+        self.assertEqual(self.classes("Natural disaster hits Houston"), ["disaster_declaration"])
+        self.assertEqual(self.classes("Natural Disaster in 2026?"), ["disaster_declaration"])
+        self.assertEqual(
+            self.classes("Will the US break its record for billion-dollar weather and climate disasters in 2026?"),
+            ["disaster_declaration"],
+        )
+        self.assertEqual(self.classes("Will head of FEMA be fired/resign before November?"), [])
+        self.assertEqual(self.classes("Trump FEMA Administrator"), [])
+        self.assertEqual(self.classes("Will El Niño conditions be declared?"), ["enso"])
+        self.assertEqual(self.classes("What will the peak RONI be for the 2026–27 El Niño?"), ["enso"])
 
 
 class PolymarketTests(unittest.TestCase):

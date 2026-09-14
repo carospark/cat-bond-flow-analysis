@@ -24,6 +24,8 @@ from pull_market_signals import (
     _paginate_cursor,
     _paginate_keyset,
     _polymarket_trades,
+    HAZARD_CLASS_NAMES,
+    KALSHI_HAZARD_CATEGORIES,
     classify_weather_contract,
 )
 
@@ -33,9 +35,29 @@ DEFAULT_DB = ROOT / "data" / "raw" / "tier1" / "prediction_market_history.sqlite
 KALSHI_BASE = "https://external-api.kalshi.com/trade-api/v2"
 POLYMARKET_GAMMA = "https://gamma-api.polymarket.com"
 POLYMARKET_CLOB = "https://clob.polymarket.com"
-POLYMARKET_SEARCH_TERMS = (
-    "temperature", "hurricane", "named storm", "tropical storm", "tropical cyclone",
-)
+# Polymarket's keyset endpoint only supports a title search, so each class
+# lists the words that appear in its market titles. The classifier then
+# decides what is actually retained.
+CLASS_SEARCH_TERMS = {
+    "city_temperature": ("temperature",),
+    "hurricane_or_named_storm": (
+        "hurricane", "named storm", "tropical storm", "tropical cyclone",
+    ),
+    "earthquake": ("earthquake", "magnitude", "tsunami"),
+    "severe_convective_storm": ("tornado", "hail"),
+    "wildfire": ("wildfire", "fire"),
+    "winter_storm": ("snow", "blizzard", "winter storm"),
+    "volcanic_eruption": ("volcano", "eruption", "VEI"),
+    "typhoon_or_cyclone": ("typhoon", "cyclone"),
+    "precipitation": ("rain", "precipitation", "flood"),
+    "windstorm": ("wind", "storm", "gust"),
+    "pandemic_or_mortality": ("pandemic", "outbreak", "public health emergency"),
+    "disaster_declaration": ("natural disaster", "FEMA", "disaster"),
+    "enso": ("El Niño", "El Nino", "La Niña", "RONI"),
+}
+POLYMARKET_SEARCH_TERMS = tuple(dict.fromkeys(
+    term for terms in CLASS_SEARCH_TERMS.values() for term in terms
+))
 
 
 def utc_now() -> str:
@@ -330,12 +352,20 @@ def in_window(value: str, start: datetime, end: datetime) -> bool:
 
 def discover_kalshi(store: Store, client: HistoryClient, start: datetime, end: datetime,
                     classification: str | None = None) -> int:
-    payload = client.json(f"{KALSHI_BASE}/series", {"category": "Climate and Weather"})
     series_rows = []
-    for series in payload.get("series", []):
-        classes = classify_weather_contract(series.get("title"), series.get("ticker"))
-        if classes and (not classification or classification in classes):
-            series_rows.append(series)
+    seen: set[str] = set()
+    for category in sorted(KALSHI_HAZARD_CATEGORIES):
+        payload = client.json(f"{KALSHI_BASE}/series", {"category": category})
+        for series in payload.get("series", []):
+            ticker = str(series.get("ticker") or "")
+            if not ticker or ticker in seen:
+                continue
+            seen.add(ticker)
+            classes = classify_weather_contract(
+                series.get("title"), ticker, strict_regions=False,
+            )
+            if classes and (not classification or classification in classes):
+                series_rows.append(series)
     inserted = 0
     for number, series in enumerate(sorted(series_rows, key=lambda row: str(row.get("ticker"))), 1):
         series_id = str(series.get("ticker") or "")
@@ -426,11 +456,7 @@ def discover_polymarket(store: Store, client: HistoryClient, start: datetime,
                         end: datetime, window_days: int,
                         classification: str | None = None) -> int:
     inserted = 0
-    search_terms = POLYMARKET_SEARCH_TERMS
-    if classification == "city_temperature":
-        search_terms = ("temperature",)
-    elif classification == "hurricane_or_named_storm":
-        search_terms = tuple(term for term in search_terms if term != "temperature")
+    search_terms = CLASS_SEARCH_TERMS.get(classification or "", POLYMARKET_SEARCH_TERMS)
     for window_start, window_end in backwards_windows(start, end, window_days):
         key = f"{classification or 'all'}:{window_start.date()}_{window_end.date()}"
         if store.job_done("discovery_jobs", "polymarket", key):
@@ -682,7 +708,7 @@ def main() -> int:
     parser.add_argument("--max-contracts", type=int, default=0,
                         help="Limit each platform/stage for a smoke run; zero means all")
     parser.add_argument(
-        "--classification", choices=("hurricane_or_named_storm", "city_temperature"),
+        "--classification", choices=HAZARD_CLASS_NAMES,
         help="Backfill one class after discovering the complete weather universe",
     )
     parser.add_argument("--timeout", type=int, default=60)

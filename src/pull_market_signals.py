@@ -81,6 +81,257 @@ STRONG_STORM_TOKEN = re.compile(
     re.IGNORECASE,
 )
 
+# ---------------------------------------------------------------------------
+# Geography tags. Each contract is tagged "region:<name>" for every region its
+# text mentions, so a class can be restricted to the geographies where the deal
+# directory actually has exposure, and so downstream joins can pick, say,
+# California earthquake markets rather than global counts.
+# ---------------------------------------------------------------------------
+
+_I = re.IGNORECASE
+REGION_PATTERNS = {
+    "california": re.compile(
+        r"\b(?:california|los angeles|\bLA\b|san francisco|san diego|sacramento|"
+        r"palisades|malibu|santa monica|beverly hills|hollywood|bay area|"
+        r"san jose|oakland|northstar|heavenly)\b", _I),
+    "florida": re.compile(
+        r"\b(?:florida|miami|tampa|orlando|jacksonville|st\.? petersburg|key west|"
+        r"fort lauderdale|pensacola|tallahassee)\b", _I),
+    "texas": re.compile(
+        r"\b(?:texas|houston|dallas|austin|san antonio|college station|galveston|"
+        r"corpus christi)\b", _I),
+    "gulf_coast": re.compile(
+        r"\b(?:louisiana|new orleans|mississippi|alabama|gulf coast|mobile,? al|"
+        r"jackson,? ms|jackson\b)\b", _I),
+    "southeast_us": re.compile(
+        r"\b(?:north carolina|south carolina|carolinas?|charleston|wilmington|"
+        r"myrtle beach|hatteras|outer banks|georgia|savannah|atlanta|virginia|"
+        r"norfolk|tennessee|kentucky|lexington|louisville)\b", _I),
+    "northeast_us": re.compile(
+        r"\b(?:new york|nyc|central park|manhattan|new jersey|boston|philadelphia|"
+        r"providence|washington,? d\.?c\.?|\bd\.?c\.?\b|mt\.? washington|"
+        r"new england|northeast|connecticut|massachusetts|pennsylvania|maryland|"
+        r"buffalo|stowe|vermont|maine)\b", _I),
+    "midwest_us": re.compile(
+        r"\b(?:chicago|illinois|ohio|columbus|michigan|detroit|wisconsin|milwaukee|"
+        r"minnesota|minneapolis|iowa|des moines|missouri|st\.? louis|kansas|"
+        r"nebraska|oklahoma|indiana|indianapolis|midwest|tornado alley|"
+        r"rapid city|south dakota|north dakota)\b", _I),
+    "mountain_west_us": re.compile(
+        r"\b(?:colorado|denver|utah|salt lake|alta|park city|arizona|phoenix|"
+        r"nevada|las vegas|lake mead|new mexico|idaho|montana|wyoming|"
+        r"jackson hole|yellowstone|washington state|seattle|oregon|portland|"
+        r"vail|breckenridge|keystone|beaver creek)\b", _I),
+    "hawaii": re.compile(r"\b(?:hawaii|honolulu|maui|oahu|central pacific)\b", _I),
+    "us": re.compile(
+        r"\b(?:u\.?s\.?a?\.?|united states|america|american|lower 48|contiguous|"
+        r"fema|nws|noaa|national weather service|usgs)\b", _I),
+    "canada": re.compile(
+        r"\b(?:canada|canadian|toronto|vancouver|montreal|british columbia|"
+        r"quebec|ontario|alberta|calgary|halifax|nova scotia)\b", _I),
+    "japan": re.compile(
+        r"\b(?:japan|japanese|honshu|tokyo|osaka|kyushu|okinawa|hokkaido|"
+        r"shikoku|nankai|JMA)\b", _I),
+    "east_asia": re.compile(
+        r"\b(?:china|chinese|taiwan|hong kong|philippines|korea|seoul|vietnam|"
+        r"northwest pacific|western pacific|west pacific|south china sea)\b", _I),
+    "mexico": re.compile(r"\b(?:mexico|mexican|baja|yucat[aá]n|acapulco)\b", _I),
+    "south_america": re.compile(
+        r"\b(?:chile|chilean|peru|peruvian|colombia|ecuador|argentina|brazil|"
+        r"south america)\b", _I),
+    "caribbean": re.compile(
+        r"\b(?:caribbean|puerto rico|jamaica|bahamas|virgin islands|cuba|"
+        r"dominican|haiti|bermuda|cayman|barbados|antilles)\b", _I),
+    "europe": re.compile(
+        r"\b(?:europe|european|\bUK\b|u\.k\.|britain|british|england|london|"
+        r"ireland|irish|dublin|scotland|wales|france|french|paris|germany|german|"
+        r"berlin|netherlands|dutch|amsterdam|belgium|denmark|danish|norway|"
+        r"sweden|scandinavia|italy|italian|vesuvius|etna|iceland|mediterranean|"
+        r"spain|portugal|switzerland|austria|poland|met office)\b", _I),
+    "australia": re.compile(
+        r"\b(?:australia|australian|queensland|brisbane|sydney|melbourne|perth|"
+        r"darwin|cairns|new south wales|northern territory)\b", _I),
+    "global": re.compile(r"\b(?:worldwide|global|globally|world'?s|anywhere|in the world)\b", _I),
+}
+
+US_SUBREGIONS = frozenset({
+    "california", "florida", "texas", "gulf_coast", "southeast_us",
+    "northeast_us", "midwest_us", "mountain_west_us", "hawaii",
+})
+US_REGIONS = US_SUBREGIONS | {"us"}
+
+
+def classify_regions(text: str) -> set[str]:
+    regions = {name for name, pattern in REGION_PATTERNS.items() if pattern.search(text)}
+    if regions & US_SUBREGIONS:
+        regions.add("us")
+    return regions
+
+
+# ---------------------------------------------------------------------------
+# Hazard classes beyond hurricane and temperature. Each entry maps a cat-bond
+# peril to the prediction-market vocabulary that describes it.
+#   pattern  - what selects the class
+#   guard    - non-hazard uses of the same words (teams, companies, politics)
+#   strong   - a guarded text keeps the class only when this also matches
+#   exclude  - always drops the class, whatever else matches
+#   regions  - restrict to geographies where the deal directory has exposure;
+#              None keeps every geography
+# ---------------------------------------------------------------------------
+
+def _spec(pattern, guard=None, strong=None, regions=None, exclude=None):
+    return {
+        "pattern": re.compile(pattern, _I),
+        "guard": re.compile(guard, _I) if guard else None,
+        "strong": re.compile(strong, _I) if strong else None,
+        "regions": frozenset(regions) if regions else None,
+        "exclude": re.compile(exclude, _I) if exclude else None,
+    }
+
+
+HAZARD_CLASSES = {
+    "earthquake": _spec(
+        r"\b(?:earthquakes?|quakes?|seismic|magnitude\s*\d|tsunamis?|richter)\b",
+        guard=r"\b(?:san jose earthquakes|blue tsunami|red tsunami|silver tsunami|"
+              r"vs\.?|versus|win\?|winner|MLS)\b",
+        strong=r"\b(?:magnitude|richter|USGS|seismic|M\s?\d\.\d)\b",
+    ),
+    "severe_convective_storm": _spec(
+        r"\b(?:tornado(?:es)?|hail(?:storm)?s?|derechos?|severe (?:thunder)?storms?|"
+        r"supercells?)\b",
+        guard=r"\b(?:hail mary|hail to|iowa state|cyclones|vs\.?|versus|win\?|"
+              r"MLS|NFL|NCAA|NBA|golden tornadoes|talladega|king university)\b",
+        strong=r"\b(?:NWS|storm prediction center|SPC|EF-?\d|tornado (?:risk|count|"
+               r"warning|watch|outbreak)|(?:how many|number of) tornado(?:es)?|"
+               r"tornado(?:es)? in the)\b",
+    ),
+    "wildfire": _spec(
+        r"\b(?:wildfires?|bushfires?|brush fires?|forest fires?|"
+        r"acres (?:burned|will burn|burn)|"
+        r"(?:palisades|eaton|sunset|hughes|camp|dixie|caldor|park) fires?|"
+        r"fire (?:season|containment|perimeter))\b",
+        guard=r"\b(?:trump|visits?|arson|arrested|charged|chicago fire|fired|"
+              r"ceasefire|firefighters? union)\b",
+        strong=r"\b(?:acres|contain(?:ed|ment)|evacuat\w*|burn(?:ed|s)?)\b",
+    ),
+    "winter_storm": _spec(
+        r"\b(?:snowfall|inches of snow|total snow|will it snow|where will it snow|"
+        r"first snow|snow (?:in|on|at)|blizzards?|ice storms?|winter storms?|"
+        r"nor'?easters?|freezing rain)\b",
+        guard=r"\b(?:snowflake|snowboard|snowdown|snow white|blizzard entertainment|"
+              r"activision|warcraft|overwatch|resort (?:opening|closing)|"
+              r"ski resort|LoL|esports)\b",
+        strong=r"\b(?:inches|snowfall|blizzard warning|NWS)\b",
+        regions=US_REGIONS | {"canada"},
+    ),
+    "volcanic_eruption": _spec(
+        r"\b(?:volcan(?:o|oes|ic)|eruptions?|erupts?|VEI\s?≥?\s?\d|supervolcano|"
+        r"vesuvius|etna|yellowstone caldera|kilauea|mauna loa|campi flegrei)\b",
+        guard=r"\b(?:erupt(?:s|ed|ion)? (?:in|into) (?:violence|protest|war|conflict)|"
+              r"volcano (?:bowl|club|bay))\b",
+        strong=r"\b(?:VEI|volcan\w*|vesuvius|etna|lava|ash)\b",
+    ),
+    "typhoon_or_cyclone": _spec(
+        r"\b(?:typhoons?|cyclones?)\b",
+        guard=r"\b(?:iowa state|vs\.?|versus|win\?|winner|NCAA|football|basketball)\b",
+        strong=r"\b(?:typhoon|landfall|tropical cyclone|JMA|category)\b",
+        regions={"japan", "east_asia", "australia"},
+    ),
+    "precipitation": _spec(
+        r"\b(?:rain(?:fall|s)?|precipitation|flood(?:s|ing|ed)?|flash floods?|"
+        r"river (?:crest|stage|level|peak)|atmospheric rivers?|"
+        r"(?:will|does|did) it rain|inches of rain)\b",
+        guard=r"\b(?:sophie rain|rain man|purple rain|grand prix|\bF1\b|race|tennis|"
+              r"golf|delay|hamas|tunnels?|flood the zone|flooded with|parade|"
+              r"rain on (?:his|her|their))\b",
+        strong=r"\b(?:inches|precipitation|rainfall|river|crest|flood(?:ing|s)?|"
+               r"NWS|gauge)\b",
+        regions=US_REGIONS | {"japan"},
+    ),
+    "windstorm": _spec(
+        r"\b(?:windstorms?|wind (?:speeds?|gusts?)|gusts?|gales?|gale[- ]force|"
+        r"storm[- ]force winds?|extratropical|met office|"
+        r"storm (?:[ée]owyn|darragh|ciar[áa]n|eunice|isha|bert|conall|floris|"
+        r"amy|benjamin|bram|babet|arwen|malik|kathleen|jocelyn|henk|pia))\b",
+        guard=r"\b(?:windsor|windows|winds of|tailwind|headwind|offshore wind|"
+              r"wind (?:farm|project|lease|energy|power|turbine)|desert storm|"
+              r"brainstorm|firestorm)\b",
+        strong=r"\b(?:mph|km/h|knots|gusts?|gale|met office|windstorm)\b",
+        regions={"europe", "australia"},
+    ),
+    # Mortality bonds trigger on declared pandemics and excess deaths, not on
+    # case counts, boosters, or drug approvals, so only declaration language
+    # qualifies.
+    "pandemic_or_mortality": _spec(
+        r"\b(?:pandemics?|PHEIC|public health emergenc(?:y|ies)|"
+        r"global health emergenc(?:y|ies)|excess (?:mortality|deaths))\b",
+        guard=r"\b(?:vaccine|vaccination|booster|mandate|lab leak|lockdown|fauci|"
+              r"stock|shares|earnings|\bvs\.?\b)\b",
+        strong=r"\b(?:declared?|named|PHEIC|excess (?:mortality|deaths))\b",
+        exclude=r"\bzombie\b",
+    ),
+    "disaster_declaration": _spec(
+        r"\b(?:FEMA|disaster declarations?|declares? (?:a )?(?:major |natural )?disasters?|"
+        r"(?:natural )?disasters? (?:hits?|in|strikes?)|states? of emergency|"
+        r"billion[- ]dollar (?:weather|climate|disasters?)|natural disasters?)\b",
+        guard=r"\b(?:administrator|head of fema|fired|resign|abolish\w*|eliminat\w*|"
+              r"trump|biden|nominat\w*|confirm\w*|budget|funding|congress|bill|"
+              r"senate|house|say during|rally|podcast)\b",
+        strong=r"\b(?:declar\w*|hits|billion[- ]dollar|natural disaster in 20\d\d)\b",
+    ),
+    "enso": _spec(
+        r"\b(?:el ni[ñn]o|la ni[ñn]a|ENSO|RONI|oceanic ni[ñn]o index)\b",
+    ),
+}
+
+HAZARD_CLASS_NAMES = tuple(WEATHER_PATTERNS) + tuple(HAZARD_CLASSES)
+
+
+def classify_weather_contract(*parts: Any, strict_regions: bool = True) -> list[str]:
+    """Return the hazard classes for a contract's text, plus region tags.
+
+    ``strict_regions=False`` skips the geography restriction; use it for
+    series-level titles such as "Where will it rain daily", whose markets
+    carry the city name individually.
+    """
+    text = " ".join(str(part or "") for part in parts)
+    matches = [name for name, pattern in WEATHER_PATTERNS.items() if pattern.search(text)]
+    if "hurricane_or_named_storm" in matches:
+        if (not WEATHER_STORM_CONTEXT.search(text)
+                or (SPORTS_HURRICANE_PATTERN.search(text)
+                    and not STRONG_STORM_TOKEN.search(text))):
+            matches.remove("hurricane_or_named_storm")
+    regions = classify_regions(text)
+    for name, spec in HAZARD_CLASSES.items():
+        if not spec["pattern"].search(text):
+            continue
+        if spec["exclude"] and spec["exclude"].search(text):
+            continue
+        if spec["guard"] and spec["guard"].search(text):
+            if not (spec["strong"] and spec["strong"].search(text)):
+                continue
+        if strict_regions and spec["regions"] and not (regions & spec["regions"]):
+            continue
+        matches.append(name)
+    if not matches:
+        return []
+    return matches + sorted(f"region:{region}" for region in regions)
+
+
+def hazard_classes(classification: str | list[str] | None) -> list[str]:
+    """Strip region tags from a stored ';'-joined classification."""
+    if not classification:
+        return []
+    items = classification.split(";") if isinstance(classification, str) else classification
+    return [item for item in items if item and not item.startswith("region:")]
+
+
+# Kalshi categories that carry hazard series. Pandemic and public-health
+# markets sit outside "Climate and Weather".
+KALSHI_HAZARD_CATEGORIES = frozenset({
+    "Climate and Weather", "Health", "Science and Technology", "World",
+})
+
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
@@ -113,17 +364,6 @@ def _json_list(value: Any) -> list[Any]:
     except (TypeError, ValueError):
         return []
     return parsed if isinstance(parsed, list) else []
-
-
-def classify_weather_contract(*parts: Any) -> list[str]:
-    text = " ".join(str(part or "") for part in parts)
-    matches = [name for name, pattern in WEATHER_PATTERNS.items() if pattern.search(text)]
-    if "hurricane_or_named_storm" in matches:
-        if (not WEATHER_STORM_CONTEXT.search(text)
-                or (SPORTS_HURRICANE_PATTERN.search(text)
-                    and not STRONG_STORM_TOKEN.search(text))):
-            matches.remove("hurricane_or_named_storm")
-    return matches
 
 
 class PublicClient:
@@ -265,7 +505,7 @@ def pull_kalshi(
     now_ts = int(datetime.now(timezone.utc).timestamp())
 
     for event in events:
-        if event.get("category") != "Climate and Weather":
+        if event.get("category") not in KALSHI_HAZARD_CATEGORIES:
             continue
         for market in event.get("markets", []):
             classes = classify_weather_contract(

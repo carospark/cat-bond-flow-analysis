@@ -10,7 +10,7 @@
       "historical_markets_url": "https://external-api.kalshi.com/trade-api/v2/historical/markets",
       "historical_cutoff_url": "https://external-api.kalshi.com/trade-api/v2/historical/cutoff",
       "frequency": "daily",
-      "scope": "Open and closed hurricane, named-storm, and city-temperature event contracts"
+      "scope": "Open and closed hazard contracts: hurricane and named storm, earthquake, severe convective storm, wildfire, winter storm, volcanic eruption, typhoon and cyclone, precipitation, windstorm, pandemic and mortality, disaster declarations, ENSO, and city temperature"
     },
     {
       "id": "polymarket_weather_markets",
@@ -21,7 +21,7 @@
       "batch_price_history_url": "https://clob.polymarket.com/batch-prices-history",
       "trade_history_url": "https://data-api.polymarket.com/trades",
       "frequency": "daily",
-      "scope": "Open and closed hurricane, named-storm, and city-temperature event contracts"
+      "scope": "Open and closed hazard contracts: hurricane and named storm, earthquake, severe convective storm, wildfire, winter storm, volcanic eruption, typhoon and cyclone, precipitation, windstorm, pandemic and mortality, disaster declarations, ENSO, and city temperature"
     },
     {
       "id": "climate_central_billion_dollar_disasters",

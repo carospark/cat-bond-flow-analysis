@@ -117,12 +117,23 @@ histories, routes Kalshi records across its live/historical cutoff, and resumes
 completed work from a gitignored SQLite database.
 
 `scripts/install_macos_prediction_history_backfill.sh` installs a separate
-03:15 local-time LaunchAgent. Each run processes up to 5,000 of the newest
-remaining hurricane and named-storm contracts per platform for prices, then
-trades. Completed or publisher-unavailable jobs are skipped automatically.
+03:15 local-time LaunchAgent. Each run discovers, then prices, then trades,
+up to 5,000 of the newest remaining contracts per platform for every hazard
+class with a cat-bond counterpart: hurricane and named storm, earthquake,
+severe convective storm, wildfire, winter storm, volcanic eruption, typhoon
+and cyclone, precipitation, windstorm, pandemic and mortality, disaster
+declarations, and ENSO. The end date moves daily so newly resolved contracts
+keep being discovered. Completed or publisher-unavailable jobs are skipped.
 City-temperature contracts are still discovered and archived daily, but their
 history backfill is deferred: they are hourly forecast markets with no link to
 insured loss, and belong to a separate project.
+
+Every contract also carries `region:<name>` tags (for example
+`region:california`, `region:japan`, `region:europe`). Precipitation and
+winter-storm markets are kept only for U.S., Canadian, and Japanese
+geographies, and windstorm markets only for Europe and Australia, because
+those are the only places the deal directory has the matching exposure. The
+mapping from cat-bond perils to markets is in `docs/SOURCES.md`.
 
 Both LaunchAgents run `/bin/zsh` from `launchd`, which has no access to
 macOS-protected folders (Desktop, Documents, Downloads, iCloud Drive). If the
