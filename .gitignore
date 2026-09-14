@@ -29,6 +29,8 @@ data/.prediction-history-batch.lock/
 data/prediction-history-batch.*.log
 
 # Working notes
+.Rhistory
+docs/*.html
 REVIEW_ROUND*.md
 REVIEW_PROMPT.md
 .claude/

@@ -153,9 +153,15 @@ and off-WRDS prediction-market histories remain separate future pulls.
   double-counting filters locally.
 
 These three exports are security and issuer masters; they contain **no TRACE
-transactions**. The next WRDS pull should use the curated CUSIP universe to
-query `trace_enhanced.trace_btds144a_enhanced` (or the standard 144A trade
-table where necessary).
+transactions**. The transaction pull was completed on 2026-09-03 against the
+bridge CUSIP universe: `trace_enhanced.trace_btds144a_enhanced` for the
+2002-2025 request (observed trades run from January 2011 to early December
+2025, where the enhanced table currently ends), plus the standard 144A trade
+table for the tail through early June 2026. Both were pulled in four CUSIP
+batches per table. The files are raw disseminated messages and keep the
+cancellation, correction, reversal, and sequence fields; no cleaning has been
+applied. Query identifiers, row counts, and checksums are in the local
+manifest.
 
 ## Pull completed 2026-08-30
 
@@ -230,16 +236,16 @@ names and export metadata. Store the licensed file under
 `data/raw/tier1/manual/bloomberg/`; that directory is ignored. Before export,
 confirm whether Bloomberg now aliases `SRCATPRR` to `SRCATPRC`.
 
-The other authenticated/manual handoffs, including the raw TRACE transaction
-query that must wait for a curated CUSIP universe, are specified in
-`docs/MANUAL_DATA_PULLS.md`.
+The other authenticated/manual handoffs are specified in
+`docs/MANUAL_DATA_PULLS.md`. The raw TRACE transaction query listed there was
+completed on 2026-09-03.
 
 ## Acquisition and extraction gaps
 
 | Gap | Current evidence | Resolution path |
 |---|---|---|
 | Bloomberg index histories | The methodology is archived, but observations are available through a licensed terminal | Export the six weekly series using the acceptance checklist in `docs/MANUAL_DATA_PULLS.md`. |
-| Raw WRDS BTDS 144A transactions | The archived TRACE/FISD files are masters, not trades; the trade query depends on the curated CUSIP universe | After the independently built deal-to-CUSIP bridge is ready, query `trace_enhanced.trace_btds144a_enhanced` and preserve WRDS screens/query metadata locally. |
+| Raw WRDS BTDS 144A transactions | Pulled 2026-09-03 for the bridge CUSIP universe: enhanced table through early December 2025, standard table for the tail through early June 2026; files are uncleaned | Apply cancellation, correction, reversal, and double-count filters locally before any use. Re-pull the tail from the enhanced table once it covers 2026, and reconcile the two tables' column sets explicitly. |
 | Swiss Re 2026 ILS Market Insights PDFs | February and July landing pages are live; automated requests returned HTTP 403 and no stable public PDF endpoint was exposed | Download both through their publication forms, verify the files, and archive them as manual pulls. |
 | Brookmont 2026 historical NAV | The 2026-09-03 issuer snapshot has current NAV and 2026 holdings, but its embedded daily history still ends 2025-12-31 | Use an official administrator or issuer history feed when one becomes available. Keep exchange prices separately labelled. |
 | Aon aggregate price-versus-guidance | The 2025 annual report publishes tranche size, expected loss, and initial spread, but no aggregate guidance series | Retain as a documented source limitation; do not manufacture an aggregate. |

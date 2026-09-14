@@ -17,3 +17,5 @@ launchctl bootout "gui/$(id -u)" "$TARGET" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$TARGET"
 launchctl enable "gui/$(id -u)/$LABEL"
 print "installed $TARGET (daily at 02:15 local time)"
+print "note: launchd cannot read macOS-protected folders (Desktop, Documents, Downloads)."
+print "      If PROJECT_ROOT is inside one, grant /bin/zsh Full Disk Access or the job exits 127."

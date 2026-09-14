@@ -26,19 +26,24 @@ forward-filled; and price-return is not mislabeled total-return.
 
 ## WRDS: raw TRACE 144A transactions
 
-The archived TRACE and FISD extracts are security/issuer masters, not trades.
-Once the independently produced cat-bond CUSIP universe is available, query
-`trace_enhanced.trace_btds144a_enhanced` for only those identifiers. If the
-enhanced table cannot cover part of the requested window, document and use the
-standard 144A trade table for that portion.
+**Completed 2026-09-03.** The archived TRACE and FISD extracts are
+security/issuer masters, not trades. Once the independently produced cat-bond
+CUSIP universe was available, `trace_enhanced.trace_btds144a_enhanced` was
+queried for only those identifiers over the 2002-2025 request window. The
+enhanced table ended in early December 2025 at pull time, so the standard 144A
+trade table was used for the tail through early June 2026, as this document
+allowed. Each table was pulled in four CUSIP batches.
 
-Save the query ID, execution/export timestamps, selected columns, date and
-CUSIP screens, row count, coverage, and WRDS Cloud export location locally.
-Preserve cancellation, correction, reversal, dissemination, and sequence
-fields so cleaning can be audited. Do not commit or redistribute the export.
+The exports live under `data/raw/tier1/wrds/` and remain gitignored. Query
+IDs, export timestamps, row counts, observed date ranges, distinct-CUSIP
+counts, and SHA-256 hashes are recorded in `data/MANIFEST.local.md`. The
+cancellation, correction, reversal, dissemination, and sequence fields were
+preserved so cleaning can be audited; no cleaning has been applied. Do not
+commit or redistribute the export.
 
-This pull is intentionally queued: defining its identifier screen depends on
-the separate deal-to-CUSIP work and is outside this non-Artemis pass.
+Follow-ups: re-pull the tail from the enhanced table once its coverage extends
+into 2026, and map the enhanced and standard column sets explicitly before
+stacking them.
 
 ## Swiss Re 2026 ILS Market Insights
 

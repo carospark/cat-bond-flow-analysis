@@ -121,6 +121,15 @@ completed work from a gitignored SQLite database.
 remaining city-temperature contracts per platform for prices, then trades.
 Completed or publisher-unavailable jobs are skipped automatically.
 
+Both LaunchAgents run `/bin/zsh` from `launchd`, which has no access to
+macOS-protected folders (Desktop, Documents, Downloads, iCloud Drive). If the
+project lives in one of those, the jobs fail every night with `can't open
+input file` and exit status 127. Either grant `/bin/zsh` Full Disk Access
+(System Settings > Privacy & Security > Full Disk Access, add `/bin/zsh`
+via Cmd+Shift+G), or keep the project outside a protected folder. Verify with
+`launchctl list | grep catbondflow`: a non-zero last-exit column means the
+job is still failing.
+
 ## Data
 
 **No third-party or licensed data is stored here.** Cloning this will not give
