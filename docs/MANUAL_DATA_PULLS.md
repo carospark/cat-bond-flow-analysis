@@ -36,10 +36,11 @@ bridge. It is broader than the bridge on one side (about 220 ILS securities
 from known issuer programs the strict deal match does not cover) and narrower
 on the other (72 bridge CUSIPs were not in it).
 
-**Open: supplementary pull.** Query the same two tables over the same date
-ranges for the CUSIPs listed in the local manifest's supplement file, using
-the same pasted-list method, and archive the result alongside the eight
-existing files. The
+**Supplementary pull completed 2026-09-15** for the 93 CUSIPs the screen
+missed, by reusing the saved query forms with only the identifier list
+replaced. Note that the enhanced form now clamps its start date to
+2003-08-02, the table's first observation, which loses no rows. Provenance
+and the reconciliation are in the local manifest. The
 enhanced table ended in early December 2025 at pull time, so the standard 144A
 trade table was used for the tail through early June 2026, as this document
 allowed. Each table was pulled in four CUSIP batches.
