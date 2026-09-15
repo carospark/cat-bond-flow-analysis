@@ -224,6 +224,46 @@ cancellation, correction, reversal, and sequence fields; no cleaning has been
 applied. Query identifiers, row counts, and checksums are in the local
 manifest.
 
+### TRACE cleaning and the deal panel
+
+`src/clean_trace_trades.py` turns the raw enhanced and standard TRACE 144A
+messages into one trade table. The rules follow Dick-Nielsen (2009, 2014),
+but the record linkage was verified empirically on these files rather than
+assumed, because the post-2012 enhanced format does not match the usual
+description:
+
+- A cancellation (`trc_st = X`) is a copy of the cancelled trade sharing its
+  `msg_seq_nb` on the same report date; both go.
+- A correction is a triple: the original, a `C` copy of it flagging the
+  correction, and an `R` record carrying the corrected values that points at
+  the original through `orig_msg_seq_nb`. The `R` is the trade that survives.
+- A reversal (`trc_st = Y`, `asof_cd = R`) names a trade reported on an
+  earlier day; both go, matched by pointer, or by characteristics when the
+  pointer does not resolve.
+- Pre-2012 rows use `C` for cancellations, `W` for corrections carrying the
+  new values, and `asof_cd = R` on plain trades for reversals.
+- Inter-dealer trades appear once per dealer; the sell-side copy is dropped.
+- In the standard-table tail, `function = C` cancels the message named in
+  `orig_msg_seq_nb`, `function = N` corrects it with the old values kept in
+  `orig_*` columns, and volumes above the dissemination cap arrive as `1MM+`
+  and are stored capped with a flag.
+
+About nine per cent of raw rows are removed. Drop counts by rule, and the
+share of clean trades that the bridge attributes to deals, are in the local
+manifest. The remaining trades belong to CUSIPs in the WRDS screen that the
+bridge does not cover, which is why recovering that screen list matters.
+
+`src/build_deal_panel.py` then aggregates the clean trades to deal, CUSIP,
+and execution day (count, volume, volume-weighted price, last, high, low, and
+dealer-buy versus dealer-sell volume), builds a daily series per prediction
+market contract and an activity index per hazard class and region (contracts
+priced, contracts traded, trade count, traded size; contracts on different
+questions are not averaged into a probability), maps each deal's free-text
+perils to hazard classes and regions with the same region vocabulary the
+market classifier uses, and joins the two on class, region, and date. The
+peril mapping needs the companion parser's `deals.csv`, passed with
+`--deals`; without it the trade and market tables are still written.
+
 ## Pull completed 2026-08-30
 
 All 13 automatable Tier 1 endpoints and the time-sensitive Tier 2 Artemis

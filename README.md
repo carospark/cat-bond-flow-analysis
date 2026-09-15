@@ -48,6 +48,8 @@ src/pull_tier1_sources.py     archive external reference sources, with checksums
 src/pull_market_signals.py    archive weather-market and disaster snapshots
 src/backfill_prediction_market_history.py  resumable closed-market history
 src/extract_reference_series.py  extract Aon, Guy Carpenter, and Lane series
+src/clean_trace_trades.py     raw TRACE messages -> one clean trade table
+src/build_deal_panel.py       deal-day trades joined to hazard-market activity
 config/tier1_sources.json     the source registry: publisher, title, URL, role
 config/market_signal_sources.json  public API registry for market signals
 docs/SOURCES.md               what each source is and why it is used
@@ -143,6 +145,25 @@ input file` and exit status 127. Either grant `/bin/zsh` Full Disk Access
 via Cmd+Shift+G), or keep the project outside a protected folder. Verify with
 `launchctl list | grep catbondflow`: a non-zero last-exit column means the
 job is still failing.
+
+## Clean and join
+
+Once the TRACE exports and the bridge are present locally:
+
+```bash
+./.venv/bin/python src/clean_trace_trades.py
+./.venv/bin/python src/build_deal_panel.py --deals /path/to/deals.csv
+```
+
+The cleaner removes cancellations, corrections, reversals, and inter-dealer
+double reports from the raw enhanced and standard TRACE messages, following
+Dick-Nielsen (2009, 2014) as checked against how the status codes actually
+link in these files; every drop is counted by rule in a summary JSON. The
+panel builder aggregates clean trades to deal, CUSIP, and day through the
+bridge, builds daily activity series per hazard class and region from the
+prediction-market database, and, when the parsed deal directory is supplied,
+maps each deal's covered perils to those classes and regions and joins the
+two. Offline tests cover every cleaning rule and the peril mapping.
 
 ## Data
 
