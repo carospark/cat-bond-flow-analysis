@@ -169,6 +169,12 @@ class HazardClassTests(unittest.TestCase):
         self.assertEqual(self.classes("Highest Mt. Washington wind speed in September?"), [])
         self.assertEqual(self.classes("Peak wind gust in the world's windiest city in August"), [])
         self.assertEqual(self.classes("Will Storm Eowyn bring 100 mph gusts to Ireland?"), ["windstorm"])
+        # A rain market that cites the Met Office as its data source is not wind.
+        self.assertEqual(
+            self.classes("Will London have 80mm or more of precipitation in August?",
+                         "Resolves per the Met Office monthly rainfall total for London."),
+            [],
+        )
         self.assertEqual(self.classes("Peak wind gust in Brisbane during Cyclone Alfred?"),
                          ["typhoon_or_cyclone", "windstorm"])
         self.assertEqual(self.classes("Will an Atlantic Shores offshore wind lease be terminated?"), [])

@@ -250,13 +250,13 @@ HAZARD_CLASSES = {
     ),
     "windstorm": _spec(
         r"\b(?:windstorms?|wind (?:speeds?|gusts?)|gusts?|gales?|gale[- ]force|"
-        r"storm[- ]force winds?|extratropical|met office|"
+        r"storm[- ]force winds?|extratropical|"
         r"storm (?:[ée]owyn|darragh|ciar[áa]n|eunice|isha|bert|conall|floris|"
         r"amy|benjamin|bram|babet|arwen|malik|kathleen|jocelyn|henk|pia))\b",
         guard=r"\b(?:windsor|windows|winds of|tailwind|headwind|offshore wind|"
               r"wind (?:farm|project|lease|energy|power|turbine)|desert storm|"
               r"brainstorm|firestorm)\b",
-        strong=r"\b(?:mph|km/h|knots|gusts?|gale|met office|windstorm)\b",
+        strong=r"\b(?:mph|km/h|knots|gusts?|gale|windstorm)\b",
         regions={"europe", "australia"},
     ),
     # Mortality bonds trigger on declared pandemics and excess deaths, not on

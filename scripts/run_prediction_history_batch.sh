@@ -31,12 +31,21 @@ CLASSES=(
   pandemic_or_mortality disaster_declaration enso
 )
 
+run_step() {
+  # One retry covers transient failures such as a macOS file lock during
+  # import (EDEADLK), which otherwise aborts the whole nightly batch.
+  if ! "$PYTHON" src/backfill_prediction_market_history.py "$@"; then
+    print -u2 "retrying after failure: $*"
+    sleep 30
+    "$PYTHON" src/backfill_prediction_market_history.py "$@"
+  fi
+}
+
 for stage in discovery prices trades; do
   for class in "${CLASSES[@]}"; do
     for platform in kalshi polymarket; do
-      "$PYTHON" src/backfill_prediction_market_history.py --since "$SINCE" --until "$UNTIL" \
-        --platform "$platform" --classification "$class" \
-        --stage "$stage" --max-contracts "$BATCH_SIZE"
+      run_step --since "$SINCE" --until "$UNTIL" --platform "$platform" \
+        --classification "$class" --stage "$stage" --max-contracts "$BATCH_SIZE"
     done
   done
 done
