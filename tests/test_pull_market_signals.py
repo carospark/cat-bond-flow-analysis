@@ -137,6 +137,11 @@ class HazardClassTests(unittest.TestCase):
     def test_volcano_typhoon_pandemic(self):
         self.assertEqual(self.classes("How many large volcano eruptions (VEI ≥4) in 2026?"), ["volcanic_eruption"])
         self.assertEqual(self.classes("Vesuvius eruption with 1+ VEI in 2026?"), ["volcanic_eruption"])
+        self.assertEqual(self.classes("When will Mount Spurr erupt?", "Resolves on a USGS-confirmed volcanic eruption."),
+                         ["volcanic_eruption"])
+        # An esports team called Eruption.
+        self.assertEqual(self.classes("Counter-Strike: Eruption vs JiJieHao - Map 1 Winner"), [])
+        self.assertEqual(self.classes("Games Total: O/U 2.5", "Counter-Strike match Eruption vs Lynn Vision"), [])
         self.assertEqual(self.classes("Will Super Typhoon Dolphin hit Japan?"), ["typhoon_or_cyclone"])
         self.assertEqual(self.classes("How many named typhoons in Northwest Pacific in 2025?"),
                          ["typhoon_or_cyclone"])

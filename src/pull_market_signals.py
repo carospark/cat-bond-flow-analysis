@@ -228,8 +228,10 @@ HAZARD_CLASSES = {
         r"\b(?:volcan(?:o|oes|ic)|eruptions?|erupts?|VEI\s?≥?\s?\d|supervolcano|"
         r"vesuvius|etna|yellowstone caldera|kilauea|mauna loa|campi flegrei)\b",
         guard=r"\b(?:erupt(?:s|ed|ion)? (?:in|into) (?:violence|protest|war|conflict)|"
-              r"volcano (?:bowl|club|bay))\b",
-        strong=r"\b(?:VEI|volcan\w*|vesuvius|etna|lava|ash)\b",
+              r"volcano (?:bowl|club|bay)|counter-strike|CS2|esports?|ESL|"
+              r"map \d|BO\d|vs\.?|versus|handicap|odd/even|total (?:kills|rounds)|"
+              r"games total|winner|playoffs?|qualifier)\b",
+        strong=r"\b(?:VEI|volcan\w*|vesuvius|etna|lava|ash|magma)\b",
     ),
     "typhoon_or_cyclone": _spec(
         r"\b(?:typhoons?|cyclones?)\b",
