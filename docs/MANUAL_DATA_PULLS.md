@@ -29,9 +29,17 @@ forward-filled; and price-return is not mislabeled total-return.
 **Completed 2026-09-03.** The archived TRACE and FISD extracts are
 security/issuer masters, not trades. Once the independently produced cat-bond
 CUSIP universe was available, `trace_enhanced.trace_btds144a_enhanced` was
-queried for a curated identifier screen over the 2002-2025 request window.
-That screen was broader than the deal-to-CUSIP bridge and its exact list was
-not saved; recovering it from the WRDS query history is an open follow-up. The
+queried for a curated identifier screen of 1,332 CUSIPs over the 2002-2025
+request window. The screen was recovered read-only from the WRDS query
+history on 2026-09-15, saved locally with hashes, and reconciled against the
+bridge. It is broader than the bridge on one side (about 220 ILS securities
+from known issuer programs the strict deal match does not cover) and narrower
+on the other (72 bridge CUSIPs were not in it).
+
+**Open: supplementary pull.** Query the same two tables over the same date
+ranges for the CUSIPs listed in the local manifest's supplement file, using
+the same pasted-list method, and archive the result alongside the eight
+existing files. The
 enhanced table ended in early December 2025 at pull time, so the standard 144A
 trade table was used for the tail through early June 2026, as this document
 allowed. Each table was pulled in four CUSIP batches.
@@ -44,8 +52,8 @@ preserved so cleaning can be audited; no cleaning has been applied. Do not
 commit or redistribute the export.
 
 Follow-ups: re-pull the tail from the enhanced table once its coverage extends
-into 2026, and map the enhanced and standard column sets explicitly before
-stacking them.
+into 2026. Column mapping and cleaning are handled by
+`src/clean_trace_trades.py`.
 
 ## Swiss Re 2026 ILS Market Insights
 
