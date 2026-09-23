@@ -6,8 +6,9 @@ Joins three local, gitignored inputs:
   cleaned TRACE 144A trade.
 * ``data/bridge.csv`` from ``build_bridge.py``: CUSIP to deal pairs.
 * ``data/bridge_program.csv`` from ``extend_bridge.py``, optional: only its
-  ``program_nearest`` rows carry a deal, and they join with confidence
-  ``program`` so they can be filtered out of any test that needs identity.
+  ``program_nearest`` and ``program_maturity_split`` rows carry a deal, and
+  they join with confidence ``program`` so they can be filtered out of any
+  test that needs identity.
 * The parsed deal directory (``deals.csv`` from the companion parser), for
   each deal's covered perils. Pass its path with ``--deals``; it is optional,
   and the peril attachment is skipped when it is absent.
@@ -56,6 +57,7 @@ TRADES_PATH = DATA / "trace_trades_clean.csv"
 BRIDGE_PATH = DATA / "bridge.csv"
 PROGRAM_BRIDGE_PATH = DATA / "bridge_program.csv"
 ATTRIBUTION_COLUMNS = ["cusip_id", "deal_url", "match_confidence"]
+PROGRAM_LEVELS_WITH_DEAL = {"program_nearest", "program_maturity_split"}
 DEALS_PATH = DATA / "deals.csv"
 DB_PATH = DATA / "raw" / "tier1" / "prediction_market_history.sqlite3"
 
@@ -116,12 +118,12 @@ def combine_bridges(bridge: pd.DataFrame, program: pd.DataFrame | None) -> pd.Da
     """Strict bridge pairs plus the program-level pairs that name one deal.
 
     The strict bridge wins for any CUSIP present in both. Program rows without
-    a single deal (tied, program-only, absent) attribute nothing here.
+    a single deal (still tied, program-only, absent) attribute nothing here.
     """
     strict = bridge[ATTRIBUTION_COLUMNS].copy()
     combined = strict.reset_index(drop=True)
     if program is not None and not program.empty:
-        nearest = program[program["level"].eq("program_nearest")
+        nearest = program[program["level"].isin(PROGRAM_LEVELS_WITH_DEAL)
                           & program["deal_url"].fillna("").astype(str).str.strip().ne("")
                           & ~program["cusip_id"].isin(strict["cusip_id"])]
         nearest = nearest[["cusip_id", "deal_url"]].assign(match_confidence="program")
@@ -246,8 +248,8 @@ def main() -> int:
     parser.add_argument("--trades", type=Path, default=TRADES_PATH)
     parser.add_argument("--bridge", type=Path, default=BRIDGE_PATH)
     parser.add_argument("--program-bridge", type=Path, default=PROGRAM_BRIDGE_PATH,
-                        help="program-level attribution table (optional); only its "
-                             "program_nearest rows are used, with confidence 'program'")
+                        help="program-level attribution table (optional); only its rows "
+                             "that name one deal are used, with confidence 'program'")
     parser.add_argument("--deals", type=Path, default=DEALS_PATH,
                         help="parsed deal directory with a perils_covered column (optional)")
     parser.add_argument("--database", type=Path, default=DB_PATH)

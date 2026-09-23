@@ -242,10 +242,14 @@ unique, the tied deals where several are equally near, and an explicit
 record where the program has no deal in the window or is absent from the
 directory. Most clean trades on those securities land on a known program
 whose deal is attached or tied; only a small share sit on programs with no
-deal in the window or none in the directory. The deal panel joins only the
-rows with one nearest deal, labelled `program` in `match_confidence`, so
-they can be excluded from any test that needs security identity. Counts are
-in the local manifest.
+deal in the window or none in the directory. Tied twins are split by stated maturity when the parsed
+directory gives both a maturity and the TRACE maturity month matches
+exactly one; a twin with no stated maturity blocks the split because it
+cannot be ruled out. The remaining ties are mostly twins the parser gave
+the same maturity, although the deal text says the series differ in tenor.
+The deal panel joins only the rows that name one deal, labelled `program`
+in `match_confidence`, so they can be excluded from any test that needs
+security identity. Counts are in the local manifest.
 
 ### TRACE cleaning and the deal panel
 
@@ -369,7 +373,7 @@ completed on 2026-09-03.
 | Gap | Current evidence | Resolution path |
 |---|---|---|
 | Bloomberg index histories | The methodology is archived, but observations are available through a licensed terminal | Export the six weekly series using the acceptance checklist in `docs/MANUAL_DATA_PULLS.md`. |
-| Raw WRDS BTDS 144A transactions | Pulled 2026-09-03 for a 1,332-CUSIP screen, recovered and reconciled 2026-09-15, plus a 93-CUSIP supplement the same day that closes the bridge gap: enhanced table through early December 2025, standard table for the tail through early June 2026; files are uncleaned | Program-level attribution of the screen securities the strict bridge does not match is done by `src/extend_bridge.py`; the deal panel joins its `program_nearest` rows with confidence `program`. Cleaning is done by `src/clean_trace_trades.py`. Re-pull the tail from the enhanced table once it covers 2026, and reconcile the two tables' column sets explicitly. |
+| Raw WRDS BTDS 144A transactions | Pulled 2026-09-03 for a 1,332-CUSIP screen, recovered and reconciled 2026-09-15, plus a 93-CUSIP supplement the same day that closes the bridge gap: enhanced table through early December 2025, standard table for the tail through early June 2026; files are uncleaned | Program-level attribution of the screen securities the strict bridge does not match is done by `src/extend_bridge.py`; the deal panel joins its rows that name one deal with confidence `program`. Cleaning is done by `src/clean_trace_trades.py`. Re-pull the tail from the enhanced table once it covers 2026, and reconcile the two tables' column sets explicitly. |
 | Swiss Re 2026 ILS Market Insights PDFs | February and July landing pages are live; automated requests returned HTTP 403 and no stable public PDF endpoint was exposed | Download both through their publication forms, verify the files, and archive them as manual pulls. |
 | Brookmont 2026 historical NAV | The 2026-09-03 issuer snapshot has current NAV and 2026 holdings, but its embedded daily history still ends 2025-12-31 | Use an official administrator or issuer history feed when one becomes available. Keep exchange prices separately labelled. |
 | Aon aggregate price-versus-guidance | The 2025 annual report publishes tranche size, expected loss, and initial spread, but no aggregate guidance series | Retain as a documented source limitation; do not manufacture an aggregate. |

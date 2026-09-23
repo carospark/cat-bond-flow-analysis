@@ -80,12 +80,14 @@ class AggregationTests(unittest.TestCase):
 
     def test_program_nearest_rows_join_with_program_confidence(self):
         program = pd.DataFrame({
-            "cusip_id": ["C9", "C1", "C8", "C7"],
-            "level": ["program_nearest", "program_nearest", "program_tied", "program_only"],
-            "deal_url": ["d2", "d9", "", ""],
+            "cusip_id": ["C9", "C1", "C8", "C7", "C6"],
+            "level": ["program_nearest", "program_nearest", "program_tied", "program_only",
+                      "program_maturity_split"],
+            "deal_url": ["d2", "d9", "", "", "d3"],
         })
         combined = combine_bridges(self.bridge, program)
-        self.assertEqual(combined["cusip_id"].tolist(), ["C1", "C2", "C9"])
+        self.assertEqual(combined["cusip_id"].tolist(), ["C1", "C2", "C9", "C6"])
+        self.assertEqual(combined["match_confidence"].tolist(), ["high", "medium", "program", "program"])
         self.assertEqual(combined.set_index("cusip_id").loc["C1", "deal_url"], "d1")  # strict wins
         self.assertEqual(combined.set_index("cusip_id").loc["C9", "match_confidence"], "program")
         panel = aggregate_trades(self.trades, combined)
