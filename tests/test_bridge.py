@@ -134,6 +134,35 @@ check(extract_series("Home Re 2021-1 Ltd.") == "2021-1",
 check(normalise_issuer("Home Re 2021-1 Ltd.", "artemis") == "HOME RE",
       "UNIT Artemis series token is not part of the issuer")
 
+# A CUSIP whose first master row is "UNKNOWN ISSUER" but is named later keeps
+# the master's own later name, at full confidence, and says so.
+late_named = pd.DataFrame([
+    {"cusip_id": "000000AD5", "issuer_nm": "UNKNOWN ISSUER", "scrty_ds": "",
+     "debt_type_cd": "", "cpn_rt": "5.0", "mtrty_dt": "2024-01-15",
+     "stdt": "2020-01-10", "enddt": "2020-06-30"},
+    {"cusip_id": "000000AD5", "issuer_nm": "ALPHA RE LTD", "scrty_ds": "ILS",
+     "debt_type_cd": "UN-CAT", "cpn_rt": "5.0", "mtrty_dt": "2024-01-15",
+     "stdt": "2020-07-01", "enddt": "2021-01-01"},
+    {"cusip_id": "000000AE3", "issuer_nm": "", "scrty_ds": "",
+     "debt_type_cd": "", "cpn_rt": "5.0", "mtrty_dt": "2024-01-15",
+     "stdt": "2020-01-10", "enddt": "2021-01-01"},
+])
+late_collapsed = collapse_trace(late_named).set_index("cusip_id")
+check(late_collapsed.loc["000000AD5", "issuer_nm"] == "ALPHA RE LTD"
+      and late_collapsed.loc["000000AD5", "issuer_name_source"] == "master:later_row"
+      and late_collapsed.loc["000000AD5", "issuer_variants"] == "ALPHA RE LTD|UNKNOWN ISSUER",
+      "UNIT later master row names a CUSIP whose first row is unknown")
+check(late_collapsed.loc["000000AE3", "issuer_nm"] == ""
+      and late_collapsed.loc["000000AE3", "issuer_name_source"] == "master",
+      "GUARD a CUSIP never named stays nameless")
+late_bridge, _, _ = match_frames(
+    pd.DataFrame([deal("Alpha Re Ltd. (Series 2020-1)", "Jan 2020", "alpha")]),
+    late_collapsed.reset_index())
+check(len(late_bridge) == 1 and late_bridge.iloc[0].match_confidence == "high"
+      and "+ticker" not in late_bridge.iloc[0].match_method
+      and "master:later_row" in late_bridge.iloc[0].name_evidence,
+      "UNIT later-row master name is identity, not a borrowed name")
+
 # A master row with no issuer name may borrow one from its exchange ticker,
 # but only when every named CUSIP on that ticker agrees, and the borrowing is
 # recorded so the match can never be reported as identity evidence.

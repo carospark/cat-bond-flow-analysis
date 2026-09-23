@@ -228,11 +228,16 @@ cancellation, correction, reversal, and sequence fields; no cleaning has been
 applied. Query identifiers, row counts, and checksums are in the local
 manifest.
 
-The strict bridge was rebuilt on 2026-09-15 with two additions. A master row
-with no issuer name may borrow one from its exchange ticker when every named
-CUSIP on that ticker normalises to one issuer; the borrowed name is recorded
-in the evidence, still has to clear the date and maturity guards, and caps
-the pair at medium confidence. A series token written into the legal name
+The strict bridge was rebuilt on 2026-09-15 and 2026-09-23 with three
+additions. A CUSIP whose earliest master row says `UNKNOWN ISSUER` or is
+blank, but which is named in a later row, now takes that later name; it is
+the master's own identity for the security, so confidence is not reduced,
+and the evidence says `master:later_row`. This alone moved 76 securities
+from unnamed to the strict bridge, most at high confidence. Where no row
+ever names the issuer, the exchange ticker may lend a name when every named
+CUSIP on that ticker normalises to one issuer; a borrowed name is recorded in
+the evidence, still has to clear the date and maturity guards, and caps the
+pair at medium confidence. A series token written into the legal name
 (`Home Re 2021-1 Ltd.`) is now read as the series rather than as part of the
 issuer. Securities the strict bridge still refuses are attributed at the
 issuer-program level by `src/extend_bridge.py`, which writes a separate

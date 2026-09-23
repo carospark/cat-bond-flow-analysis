@@ -223,12 +223,20 @@ def collapse_trace(trace):
     ).reset_index()
 
     # The earliest historical master row is closest to original issuance and
-    # generally has the least-truncated issuer. Keep all observed variants too.
-    base = (work.sort_values(["cusip_id", "stdt_parsed", "issuer_nm"], kind="stable")
-            .drop_duplicates("cusip_id")[["cusip_id", "issuer_nm", "scrty_ds"]])
+    # generally has the least-truncated issuer, but some CUSIPs start life as
+    # "UNKNOWN ISSUER" or blank and are named only in later rows. Prefer the
+    # earliest *named* row and record when that was not the first row. Keep
+    # all observed variants too.
+    work["_nameless"] = _is_nameless(work.issuer_nm)
+    ordered = work.sort_values(["cusip_id", "_nameless", "stdt_parsed", "issuer_nm"], kind="stable")
+    base = ordered.drop_duplicates("cusip_id")[["cusip_id", "issuer_nm", "scrty_ds"]]
+    first_row_nameless = (work.sort_values(["cusip_id", "stdt_parsed", "issuer_nm"], kind="stable")
+                          .drop_duplicates("cusip_id").set_index("cusip_id")._nameless)
     base["issuer_name_source"] = "master"
+    later = base.cusip_id.map(first_row_nameless).fillna(False).astype(bool) & ~_is_nameless(base.issuer_nm)
+    base.loc[later, "issuer_name_source"] = "master:later_row"
     base = _infer_names_from_ticker(work, base)
-    variants = (work[["cusip_id", "issuer_nm"]]
+    variants = (work.loc[work.issuer_nm.astype(str).str.strip().ne(""), ["cusip_id", "issuer_nm"]]
                 .drop_duplicates().sort_values(["cusip_id", "issuer_nm"])
                 .groupby("cusip_id").issuer_nm.agg("|".join)
                 .rename("issuer_variants").reset_index())
@@ -406,8 +414,9 @@ def match_frames(index, securities):
         confidence = _confidence(name["rank"], distance, series_state, maturity_state)
         name_source = tr.get("issuer_name_source") or "master"
         method = name["method"]
-        if name_source != "master":
-            # A borrowed name is corroborating evidence, not identity.
+        if name_source.startswith("ticker"):
+            # A borrowed name is corroborating evidence, not identity. A name
+            # taken from a later master row is still the master's own identity.
             confidence = "medium" if confidence == "high" else confidence
             method = method + "+ticker_inferred_name"
         date_evidence = ("same issue month" if distance == 0 else
