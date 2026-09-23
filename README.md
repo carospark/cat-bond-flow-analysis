@@ -153,6 +153,7 @@ Once the TRACE exports and the bridge are present locally:
 
 ```bash
 ./.venv/bin/python src/clean_trace_trades.py
+./.venv/bin/python src/extend_bridge.py
 ./.venv/bin/python src/build_deal_panel.py --deals /path/to/deals.csv
 ```
 
@@ -173,8 +174,9 @@ explicitly rather than forcing them through the strict path: for every
 screened CUSIP outside `bridge.csv` it finds the issuer program, the nearest
 directory deal by issue month, and writes a separate table with confidence
 `program` and a level (`program_nearest`, `program_tied`, `program_only`,
-`program_absent`). It never modifies `bridge.csv`, and the panel builder does
-not consume it yet.
+`program_absent`). It never modifies `bridge.csv`. The panel builder joins
+only the `program_nearest` rows, with match confidence `program`, so any test
+that needs identity rather than program membership can filter them out.
 
 ```bash
 ./.venv/bin/python src/extend_bridge.py

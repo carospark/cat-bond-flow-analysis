@@ -5,6 +5,9 @@ Joins three local, gitignored inputs:
 * ``data/trace_trades_clean.csv`` from ``clean_trace_trades.py``: one row per
   cleaned TRACE 144A trade.
 * ``data/bridge.csv`` from ``build_bridge.py``: CUSIP to deal pairs.
+* ``data/bridge_program.csv`` from ``extend_bridge.py``, optional: only its
+  ``program_nearest`` rows carry a deal, and they join with confidence
+  ``program`` so they can be filtered out of any test that needs identity.
 * The parsed deal directory (``deals.csv`` from the companion parser), for
   each deal's covered perils. Pass its path with ``--deals``; it is optional,
   and the peril attachment is skipped when it is absent.
@@ -51,6 +54,8 @@ from pull_market_signals import classify_regions, hazard_classes  # noqa: E402
 DATA = ROOT / "data"
 TRADES_PATH = DATA / "trace_trades_clean.csv"
 BRIDGE_PATH = DATA / "bridge.csv"
+PROGRAM_BRIDGE_PATH = DATA / "bridge_program.csv"
+ATTRIBUTION_COLUMNS = ["cusip_id", "deal_url", "match_confidence"]
 DEALS_PATH = DATA / "deals.csv"
 DB_PATH = DATA / "raw" / "tier1" / "prediction_market_history.sqlite3"
 
@@ -107,6 +112,26 @@ def map_perils(text: str) -> list[tuple[str, str]]:
     return pairs
 
 
+def combine_bridges(bridge: pd.DataFrame, program: pd.DataFrame | None) -> pd.DataFrame:
+    """Strict bridge pairs plus the program-level pairs that name one deal.
+
+    The strict bridge wins for any CUSIP present in both. Program rows without
+    a single deal (tied, program-only, absent) attribute nothing here.
+    """
+    strict = bridge[ATTRIBUTION_COLUMNS].copy()
+    combined = strict.reset_index(drop=True)
+    if program is not None and not program.empty:
+        nearest = program[program["level"].eq("program_nearest")
+                          & program["deal_url"].fillna("").astype(str).str.strip().ne("")
+                          & ~program["cusip_id"].isin(strict["cusip_id"])]
+        nearest = nearest[["cusip_id", "deal_url"]].assign(match_confidence="program")
+        combined = pd.concat([strict, nearest], ignore_index=True)
+    if not combined["cusip_id"].is_unique:
+        duplicates = combined[combined["cusip_id"].duplicated()]["cusip_id"].tolist()
+        raise ValueError("a CUSIP may attribute to only one deal: %s" % duplicates[:5])
+    return combined
+
+
 def build_hazard_map(deals: pd.DataFrame, bridge: pd.DataFrame) -> pd.DataFrame:
     deals = deals[deals["deal_url"].isin(bridge["deal_url"])]
     rows = []
@@ -120,7 +145,7 @@ def build_hazard_map(deals: pd.DataFrame, bridge: pd.DataFrame) -> pd.DataFrame:
 
 
 def aggregate_trades(trades: pd.DataFrame, bridge: pd.DataFrame) -> pd.DataFrame:
-    keyed = trades.merge(bridge[["cusip_id", "deal_url", "match_confidence"]], on="cusip_id", how="inner")
+    keyed = trades.merge(bridge[ATTRIBUTION_COLUMNS], on="cusip_id", how="inner")
     keyed["notional"] = keyed["price"] * keyed["volume"]
     keyed["dealer_sell_volume"] = keyed["volume"].where(keyed["dealer_side"] == "S", 0.0)
     keyed["dealer_buy_volume"] = keyed["volume"].where(keyed["dealer_side"] == "B", 0.0)
@@ -220,6 +245,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--trades", type=Path, default=TRADES_PATH)
     parser.add_argument("--bridge", type=Path, default=BRIDGE_PATH)
+    parser.add_argument("--program-bridge", type=Path, default=PROGRAM_BRIDGE_PATH,
+                        help="program-level attribution table (optional); only its "
+                             "program_nearest rows are used, with confidence 'program'")
     parser.add_argument("--deals", type=Path, default=DEALS_PATH,
                         help="parsed deal directory with a perils_covered column (optional)")
     parser.add_argument("--database", type=Path, default=DB_PATH)
@@ -230,13 +258,21 @@ def main() -> int:
     summary: dict = {}
 
     trades = pd.read_csv(args.trades, dtype={"cusip_id": str, "msg_seq_nb": str})
-    bridge = pd.read_csv(args.bridge, dtype={"cusip_id": str})
+    strict = pd.read_csv(args.bridge, dtype={"cusip_id": str})
+    program = None
+    if args.program_bridge.exists():
+        program = pd.read_csv(args.program_bridge, dtype={"cusip_id": str})
+    bridge = combine_bridges(strict, program)
     deal_daily = aggregate_trades(trades, bridge)
     deal_daily.to_csv(out / "deal_daily_trades.csv", index=False)
+    by_confidence = deal_daily.groupby("match_confidence")["n_trades"].sum()
     summary["deal_daily_trades"] = {
         "rows": int(len(deal_daily)), "deals": int(deal_daily["deal_url"].nunique()),
         "cusips": int(deal_daily["cusip_id"].nunique()),
         "trades_matched_to_deals": int(deal_daily["n_trades"].sum()),
+        "trades_by_match_confidence": {k: int(v) for k, v in by_confidence.items()},
+        "program_bridge": (str(args.program_bridge) if program is not None
+                           else "skipped: %s not found" % args.program_bridge),
         "trades_unmatched": int(len(trades) - deal_daily["n_trades"].sum()),
         "first_date": str(deal_daily["trade_date"].min()), "last_date": str(deal_daily["trade_date"].max()),
     }
@@ -259,6 +295,7 @@ def main() -> int:
         panel.to_csv(out / "deal_panel.csv", index=False)
         summary["deal_hazard_map"] = {
             "bridged_deals": int(bridge["deal_url"].nunique()),
+            "strict_bridge_deals": int(strict["deal_url"].nunique()),
             "deals_with_hazard": int(hazard_map["deal_url"].nunique()),
             "pairs_by_class": hazard_map["hazard_class"].value_counts().to_dict(),
             "pairs_by_region": hazard_map["region"].value_counts().to_dict(),

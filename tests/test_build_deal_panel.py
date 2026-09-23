@@ -14,6 +14,7 @@ from build_deal_panel import (  # noqa: E402
     aggregate_trades,
     attach_hazards,
     build_hazard_map,
+    combine_bridges,
     map_perils,
 )
 
@@ -76,6 +77,24 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(day["dealer_sell_volume"], 1_000_000.0)
         self.assertEqual(day["dealer_buy_volume"], 3_000_000.0)
         self.assertEqual(day["capped_volume_rows"], 1)
+
+    def test_program_nearest_rows_join_with_program_confidence(self):
+        program = pd.DataFrame({
+            "cusip_id": ["C9", "C1", "C8", "C7"],
+            "level": ["program_nearest", "program_nearest", "program_tied", "program_only"],
+            "deal_url": ["d2", "d9", "", ""],
+        })
+        combined = combine_bridges(self.bridge, program)
+        self.assertEqual(combined["cusip_id"].tolist(), ["C1", "C2", "C9"])
+        self.assertEqual(combined.set_index("cusip_id").loc["C1", "deal_url"], "d1")  # strict wins
+        self.assertEqual(combined.set_index("cusip_id").loc["C9", "match_confidence"], "program")
+        panel = aggregate_trades(self.trades, combined)
+        self.assertEqual(panel[panel["deal_url"] == "d2"]["match_confidence"].tolist(), ["program"])
+        self.assertEqual(panel[panel["deal_url"] == "d1"]["n_trades"].sum(), 3)
+        self.assertTrue(combine_bridges(self.bridge, None).equals(
+            combine_bridges(self.bridge, program.iloc[0:0])))
+        with self.assertRaises(ValueError):
+            combine_bridges(pd.concat([self.bridge, self.bridge]), None)
 
     def test_hazard_map_and_attach(self):
         deals = pd.DataFrame({"deal_url": ["d1", "d2"],
