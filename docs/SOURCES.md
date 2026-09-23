@@ -228,6 +228,22 @@ cancellation, correction, reversal, and sequence fields; no cleaning has been
 applied. Query identifiers, row counts, and checksums are in the local
 manifest.
 
+The strict bridge was rebuilt on 2026-09-15 with two additions. A master row
+with no issuer name may borrow one from its exchange ticker when every named
+CUSIP on that ticker normalises to one issuer; the borrowed name is recorded
+in the evidence, still has to clear the date and maturity guards, and caps
+the pair at medium confidence. A series token written into the legal name
+(`Home Re 2021-1 Ltd.`) is now read as the series rather than as part of the
+issuer. Securities the strict bridge still refuses are attributed at the
+issuer-program level by `src/extend_bridge.py`, which writes a separate
+table (`data/bridge_program.csv`, confidence `program`) rather than touching
+the strict output: the nearest directory deal by issue month where one is
+unique, the tied deals where several are equally near, and an explicit
+record where the program has no deal in the window or is absent from the
+directory. Most clean trades on those securities land on a known program
+whose deal is attached or tied; only a small share sit on programs with no
+deal in the window or none in the directory. Counts are in the local manifest.
+
 ### TRACE cleaning and the deal panel
 
 `src/clean_trace_trades.py` turns the raw enhanced and standard TRACE 144A
@@ -350,7 +366,7 @@ completed on 2026-09-03.
 | Gap | Current evidence | Resolution path |
 |---|---|---|
 | Bloomberg index histories | The methodology is archived, but observations are available through a licensed terminal | Export the six weekly series using the acceptance checklist in `docs/MANUAL_DATA_PULLS.md`. |
-| Raw WRDS BTDS 144A transactions | Pulled 2026-09-03 for a 1,332-CUSIP screen, recovered and reconciled 2026-09-15, plus a 93-CUSIP supplement the same day that closes the bridge gap: enhanced table through early December 2025, standard table for the tail through early June 2026; files are uncleaned | Extend the bridge to the issuer programs the screen covers but the deal match does not (about 220 securities, listed locally). Cleaning is done by `src/clean_trace_trades.py`. Re-pull the tail from the enhanced table once it covers 2026, and reconcile the two tables' column sets explicitly. |
+| Raw WRDS BTDS 144A transactions | Pulled 2026-09-03 for a 1,332-CUSIP screen, recovered and reconciled 2026-09-15, plus a 93-CUSIP supplement the same day that closes the bridge gap: enhanced table through early December 2025, standard table for the tail through early June 2026; files are uncleaned | Program-level attribution of the screen securities the strict bridge does not match is done by `src/extend_bridge.py`; the deal panel does not consume it yet. Cleaning is done by `src/clean_trace_trades.py`. Re-pull the tail from the enhanced table once it covers 2026, and reconcile the two tables' column sets explicitly. |
 | Swiss Re 2026 ILS Market Insights PDFs | February and July landing pages are live; automated requests returned HTTP 403 and no stable public PDF endpoint was exposed | Download both through their publication forms, verify the files, and archive them as manual pulls. |
 | Brookmont 2026 historical NAV | The 2026-09-03 issuer snapshot has current NAV and 2026 holdings, but its embedded daily history still ends 2025-12-31 | Use an official administrator or issuer history feed when one becomes available. Keep exchange prices separately labelled. |
 | Aon aggregate price-versus-guidance | The 2025 annual report publishes tranche size, expected loss, and initial spread, but no aggregate guidance series | Retain as a documented source limitation; do not manufacture an aggregate. |

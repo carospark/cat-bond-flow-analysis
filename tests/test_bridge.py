@@ -129,6 +129,52 @@ resolved, _, _ = match_frames(
 check(len(resolved) == 1 and resolved.iloc[0].deal_url.endswith("beta-2"),
       "UNIT explicit TRACE series resolves collision")
 
+check(extract_series("Home Re 2021-1 Ltd.") == "2021-1",
+      "UNIT unlabelled Artemis series inside the legal name")
+check(normalise_issuer("Home Re 2021-1 Ltd.", "artemis") == "HOME RE",
+      "UNIT Artemis series token is not part of the issuer")
+
+# A master row with no issuer name may borrow one from its exchange ticker,
+# but only when every named CUSIP on that ticker agrees, and the borrowing is
+# recorded so the match can never be reported as identity evidence.
+ticker_trace = pd.DataFrame([
+    {"cusip_id": "000000BA1", "issuer_nm": "GAMMA RE LTD", "scrty_ds": "ILS",
+     "debt_type_cd": "", "cpn_rt": "3.0", "mtrty_dt": "2024-01-15",
+     "stdt": "2020-01-10", "enddt": "2021-01-01", "company_symbol": "GMRE"},
+    {"cusip_id": "000000BB9", "issuer_nm": "UNKNOWN ISSUER", "scrty_ds": "ILS",
+     "debt_type_cd": "", "cpn_rt": "3.0", "mtrty_dt": "2024-01-15",
+     "stdt": "2020-01-10", "enddt": "2021-01-01", "company_symbol": "GMRE"},
+    {"cusip_id": "000000BC7", "issuer_nm": "DELTA RE LTD", "scrty_ds": "ILS",
+     "debt_type_cd": "", "cpn_rt": "3.0", "mtrty_dt": "2024-01-15",
+     "stdt": "2020-01-10", "enddt": "2021-01-01", "company_symbol": "MIXD"},
+    {"cusip_id": "000000BD5", "issuer_nm": "EPSILON RE LTD", "scrty_ds": "ILS",
+     "debt_type_cd": "", "cpn_rt": "3.0", "mtrty_dt": "2024-01-15",
+     "stdt": "2020-01-10", "enddt": "2021-01-01", "company_symbol": "MIXD"},
+    {"cusip_id": "000000BE3", "issuer_nm": "", "scrty_ds": "ILS",
+     "debt_type_cd": "", "cpn_rt": "3.0", "mtrty_dt": "2024-01-15",
+     "stdt": "2020-01-10", "enddt": "2021-01-01", "company_symbol": "MIXD"},
+])
+ticker_collapsed = collapse_trace(ticker_trace).set_index("cusip_id")
+check(ticker_collapsed.loc["000000BA1", "issuer_name_source"] == "master",
+      "UNIT named master row keeps its own name")
+check(ticker_collapsed.loc["000000BB9", "issuer_nm"] == "GAMMA RE LTD"
+      and ticker_collapsed.loc["000000BB9", "issuer_name_source"].startswith("ticker GMRE"),
+      "UNIT nameless CUSIP borrows the unanimous ticker name and is flagged")
+check(ticker_collapsed.loc["000000BE3", "issuer_nm"] == ""
+      and ticker_collapsed.loc["000000BE3", "issuer_name_source"] == "master",
+      "GUARD ticker shared by disagreeing issuers lends no name")
+borrowed_bridge, _, _ = match_frames(
+    pd.DataFrame([deal("Gamma Re Ltd. (Series 2020-1)", "Jan 2020", "gamma")]),
+    ticker_collapsed.reset_index())
+check(set(borrowed_bridge.cusip_id) == {"000000BA1", "000000BB9"},
+      "UNIT borrowed name still has to clear the strict match")
+borrowed = borrowed_bridge.set_index("cusip_id")
+check(borrowed.loc["000000BA1", "match_confidence"] == "high"
+      and borrowed.loc["000000BB9", "match_confidence"] == "medium"
+      and borrowed.loc["000000BB9", "match_method"].endswith("+ticker_inferred_name")
+      and "ticker GMRE" in borrowed.loc["000000BB9", "name_evidence"],
+      "GUARD borrowed name caps confidence at medium and is visible in evidence")
+
 if "--unit-only" in sys.argv:
     if failures:
         raise SystemExit("%d bridge unit test(s) failed" % len(failures))

@@ -44,6 +44,7 @@ attributes another security's trades to a deal.
 
 ```
 src/build_bridge.py           deal universe -> security identifiers, with evidence
+src/extend_bridge.py          program-level attribution for what the bridge refuses
 src/pull_tier1_sources.py     archive external reference sources, with checksums
 src/pull_market_signals.py    archive weather-market and disaster snapshots
 src/backfill_prediction_market_history.py  resumable closed-market history
@@ -164,6 +165,20 @@ bridge, builds daily activity series per hazard class and region from the
 prediction-market database, and, when the parsed deal directory is supplied,
 maps each deal's covered perils to those classes and regions and joins the
 two. Offline tests cover every cleaning rule and the peril mapping.
+
+The strict bridge leaves real ILS securities unattributed when the directory
+has the issuer program but no deal within a month, several deals in the same
+month, or no deal at all. `src/extend_bridge.py` records those cases
+explicitly rather than forcing them through the strict path: for every
+screened CUSIP outside `bridge.csv` it finds the issuer program, the nearest
+directory deal by issue month, and writes a separate table with confidence
+`program` and a level (`program_nearest`, `program_tied`, `program_only`,
+`program_absent`). It never modifies `bridge.csv`, and the panel builder does
+not consume it yet.
+
+```bash
+./.venv/bin/python src/extend_bridge.py
+```
 
 ## Data
 

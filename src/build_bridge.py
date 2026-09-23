@@ -72,6 +72,11 @@ def extract_series(value):
     match = re.search(r"\((?:SERIES\s+)?((?:19|20)\d{2}-[0-9]+[A-Z]?)\)", text)
     if match:
         return match.group(1)
+    # An unlabelled year-dash-number inside the legal name: "Home Re 2021-1
+    # Ltd.", "Loma Reinsurance (Bermuda) Ltd. 2013-1". A bare year never counts.
+    match = re.search(r"\b((?:19|20)\d{2}-[0-9]+[A-Z]?)\b", text)
+    if match:
+        return match.group(1)
     return ""
 
 
@@ -80,6 +85,8 @@ def _prepare_name(value, source):
     if source == "artemis":
         text = re.split(r"\s+(?:-|\N{EN DASH}|\N{EM DASH})\s+", text, maxsplit=1)[0]
         text = re.sub(r"\([^)]*\)", " ", text)
+        # "Home Re 2021-1 Ltd.": the series token is not part of the issuer.
+        text = re.sub(r"\b(?:19|20)\d{2}-[0-9]+[A-Z]?\b", " ", text)
     else:
         text = re.split(r"\b(?:ACTING\s+(?:IN|N|ON)|SEGREGATED\s+ACCT|SERIES\s+ACCOUNT)\b",
                         text, maxsplit=1)[0]
@@ -141,6 +148,47 @@ def _date_guard(artemis_month, trace_month):
     return abs(int(artemis_month) - int(trace_month)) <= MAX_MONTH_DISTANCE
 
 
+def _is_nameless(names):
+    upper = names.fillna("").astype(str).str.strip().str.upper()
+    return upper.eq("") | upper.str.contains("UNKNOWN ISSUER", regex=False)
+
+
+def _infer_names_from_ticker(work, base):
+    """Borrow an issuer name from the ticker when every named holder agrees.
+
+    Some master rows carry no issuer name but do carry the exchange ticker in
+    ``company_symbol``. If every named CUSIP sharing that ticker normalises to
+    one issuer key, the nameless CUSIP is given that name and flagged; the
+    match must still clear the date guard, and confidence is capped.
+    """
+    if "company_symbol" not in work.columns:
+        return base
+    symbol = work.company_symbol.fillna("").astype(str).str.strip()
+    usable = symbol.ne("") & symbol.ne(work.cusip_id.astype(str))
+    named = work[usable & ~_is_nameless(work.issuer_nm)].copy()
+    if named.empty:
+        return base
+    named["key"] = named.issuer_nm.map(lambda x: normalise_issuer(x, "trace"))
+    named["symbol"] = symbol[named.index]
+    agree = named.groupby("symbol").key.nunique().eq(1)
+    unanimous = named[named.symbol.isin(agree[agree].index)]
+    counts = unanimous.groupby("symbol").cusip_id.nunique()
+    chosen = (unanimous.sort_values(["symbol", "stdt_parsed", "issuer_nm"], kind="stable")
+              .drop_duplicates("symbol").set_index("symbol").issuer_nm)
+    nameless = base[_is_nameless(base.issuer_nm)]
+    if nameless.empty:
+        return base
+    first_symbol = (work[usable].sort_values(["cusip_id", "stdt_parsed"], kind="stable")
+                    .drop_duplicates("cusip_id").set_index("cusip_id").company_symbol)
+    for row in nameless.itertuples():
+        sym = first_symbol.get(row.cusip_id)
+        if sym in chosen.index:
+            base.loc[row.Index, "issuer_nm"] = chosen[sym]
+            base.loc[row.Index, "issuer_name_source"] = "ticker %s shared by %d named CUSIPs" % (
+                sym, int(counts[sym]))
+    return base
+
+
 def collapse_trace(trace):
     """Collapse longitudinal master history to one evidence-bearing CUSIP row."""
     required = {"cusip_id", "issuer_nm", "scrty_ds", "debt_type_cd", "cpn_rt",
@@ -178,6 +226,8 @@ def collapse_trace(trace):
     # generally has the least-truncated issuer. Keep all observed variants too.
     base = (work.sort_values(["cusip_id", "stdt_parsed", "issuer_nm"], kind="stable")
             .drop_duplicates("cusip_id")[["cusip_id", "issuer_nm", "scrty_ds"]])
+    base["issuer_name_source"] = "master"
+    base = _infer_names_from_ticker(work, base)
     variants = (work[["cusip_id", "issuer_nm"]]
                 .drop_duplicates().sort_values(["cusip_id", "issuer_nm"])
                 .groupby("cusip_id").issuer_nm.agg("|".join)
@@ -354,6 +404,12 @@ def match_frames(index, securities):
 
         _, name, distance, series_state, maturity_state, maturity_text, ar = best[0]
         confidence = _confidence(name["rank"], distance, series_state, maturity_state)
+        name_source = tr.get("issuer_name_source") or "master"
+        method = name["method"]
+        if name_source != "master":
+            # A borrowed name is corroborating evidence, not identity.
+            confidence = "medium" if confidence == "high" else confidence
+            method = method + "+ticker_inferred_name"
         date_evidence = ("same issue month" if distance == 0 else
                          "TRACE issue month is adjacent to Artemis month")
         selected.append({
@@ -377,11 +433,11 @@ def match_frames(index, securities):
             "trace_coupon_max": tr["trace_coupon_max"],
             "trace_coupon_observation_count": tr["trace_coupon_observation_count"],
             "match_confidence": confidence,
-            "match_method": name["method"],
+            "match_method": method,
             "name_similarity": name["similarity"],
-            "name_evidence": "Artemis '%s' -> %s; TRACE '%s' -> %s" %
+            "name_evidence": "Artemis '%s' -> %s; TRACE '%s' -> %s; TRACE name source: %s" %
                              (ar["issuer_name"], ar["issuer_key"],
-                              tr["issuer_nm"], tr["issuer_key"]),
+                              tr["issuer_nm"], tr["issuer_key"], name_source),
             "series_evidence": series_state,
             "date_evidence": date_evidence,
             "maturity_evidence": maturity_state + ": " + maturity_text,
