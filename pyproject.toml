@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Joining catastrophe bond issuance to secondary-market and fund data"
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = ["pandas", "numpy", "requests", "beautifulsoup4", "lxml"]
+dependencies = ["pandas", "numpy", "requests", "beautifulsoup4", "lxml", "matplotlib"]
 
 [tool.setuptools]
 py-modules = []

@@ -51,6 +51,7 @@ src/backfill_prediction_market_history.py  resumable closed-market history
 src/extract_reference_series.py  extract Aon, Guy Carpenter, and Lane series
 src/clean_trace_trades.py     raw TRACE messages -> one clean trade table
 src/build_deal_panel.py       deal-day trades joined to hazard-market activity
+src/event_check.py            end-to-end check of the joins around one hurricane
 config/tier1_sources.json     the source registry: publisher, title, URL, role
 config/market_signal_sources.json  public API registry for market signals
 docs/SOURCES.md               what each source is and why it is used
@@ -180,6 +181,31 @@ when both twins state one and the TRACE maturity matches exactly one. It
 never modifies `bridge.csv`. The panel builder joins only the rows that name
 one deal, with match confidence `program`, so any test that needs identity
 rather than program membership can filter them out.
+
+## Checking the joins
+
+`src/event_check.py` is a validation gate, not a result. Around one Florida
+landfall it splits the traded deals by the hazard map into Florida-exposed
+and no-hurricane groups, takes each deal's volume-weighted price before and
+after the event, and plots the weekly median path of each group above the
+weekly hurricane-contract activity from the prediction markets. If the
+bridge, the cleaning, the peril mapping, and the market join are all right,
+exposed bonds move and unexposed bonds do not.
+
+```bash
+./.venv/bin/python src/event_check.py --event ian
+./.venv/bin/python src/event_check.py --event milton --include-program --pre-days 60
+```
+
+Both storms pass. Around Ian the known loss-bearing deals fall by tens of
+points while the diversified exposed deals and the earthquake-only deals
+share a uniform few-point decline, which is the market-wide repricing of
+late 2022 rather than an attribution error. Around Milton only exposed deals
+move at all: one sells off into landfall and recovers, the rest rally once
+the season's peak has passed, and the unexposed deals stay within a fraction
+of a point. Contract activity leads Ian's landfall by a week and peaks in
+Milton's landfall week. Outputs are gitignored under `data/event_checks/`;
+the figures are in the local manifest.
 
 ## Data
 

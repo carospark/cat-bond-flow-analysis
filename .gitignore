@@ -28,6 +28,7 @@ data/.daily-non-artemis-pull.lock/
 data/daily-non-artemis-pull.*.log
 data/.prediction-history-batch.lock/
 data/prediction-history-batch.*.log
+data/event_checks/
 
 # Working notes
 .Rhistory
