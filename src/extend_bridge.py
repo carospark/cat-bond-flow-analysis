@@ -150,6 +150,40 @@ def split_ties(result: pd.DataFrame, securities: pd.DataFrame,
     return result
 
 
+def split_by_title(result: pd.DataFrame, title_series: dict[str, str]) -> pd.DataFrame:
+    """Resolve ``program_tied`` rows whose holders name exactly one tied deal's series.
+
+    Funds describe positions in Form N-PORT with titles like "Kilimanjaro III
+    Re 2019-1 Class A-1". When every title for a CUSIP names the same series
+    and exactly one tied deal's directory slug carries it, that deal wins at
+    level ``program_nport_title``. Runs before the maturity split because a
+    stated series is stronger evidence than a maturity month.
+    """
+    from resolve_ties_from_nport import normalize_series, series_from_deal_url
+
+    result = result.copy()
+    if "title_evidence" not in result.columns:
+        result["title_evidence"] = ""
+    for idx in result.index[result.level.eq("program_tied")]:
+        row = result.loc[idx]
+        title = title_series.get(row.cusip_id)
+        if not title:
+            continue
+        urls = [u for u in str(row.tied_deal_urls).split("|") if u]
+        matches = [u for u in urls if normalize_series(title) in
+                   {normalize_series(s) for s in series_from_deal_url(u)}]
+        if len(matches) == 1:
+            result.loc[idx, ["level", "deal_url", "tied_deal_urls"]] = [
+                "program_nport_title", matches[0], ""]
+            result.loc[idx, "title_evidence"] = "nport_title:%s names %s" % (
+                title, matches[0].rstrip("/").rsplit("/", 1)[-1])
+        elif not matches:
+            result.loc[idx, "title_evidence"] = "nport_title:%s names none of the tied deals" % title
+        else:
+            result.loc[idx, "title_evidence"] = "nport_title:%s names %d tied deals" % (title, len(matches))
+    return result
+
+
 def attribute(unplaced: pd.DataFrame, index: pd.DataFrame, max_months: int) -> pd.DataFrame:
     art = index.copy()
     art["program"] = art.issuer_name.map(lambda x: program_key(x, "artemis"))
@@ -218,6 +252,10 @@ def main() -> int:
                              "used only to split tied deals by stated maturity")
     parser.add_argument("--maturity-tolerance", type=int, default=1,
                         help="months a TRACE maturity may differ from a stated deal maturity")
+    parser.add_argument("--nport-holdings", type=Path,
+                        default=ROOT / "data" / "processed" / "nport" / "fund_holdings.csv",
+                        help="parsed N-PORT holdings whose titles name series (optional); "
+                             "used to split tied deals before the maturity split")
     parser.add_argument("--output", type=Path, default=OUTPUT_PATH)
     parser.add_argument("--summary", type=Path, default=SUMMARY_PATH)
     args = parser.parse_args()
@@ -233,6 +271,11 @@ def main() -> int:
     unplaced = unplaced[unplaced.issuer_nm.fillna("").str.strip().ne("")
                         & ~unplaced.issuer_nm.fillna("").str.upper().str.contains("UNKNOWN ISSUER")]
     result = attribute(unplaced, index, args.max_months)
+    title_series: dict[str, str] = {}
+    if args.nport_holdings.exists():
+        from resolve_ties_from_nport import title_series_map
+        title_series = title_series_map(args.nport_holdings)
+    result = split_by_title(result, title_series)
     maturities: dict[str, tuple[int, str]] = {}
     if args.deals.exists():
         deals = pd.read_csv(args.deals, dtype=str, low_memory=False)
@@ -248,6 +291,13 @@ def main() -> int:
         "by_basis": result.match_basis.replace("", "none").value_counts().to_dict(),
         "programs_absent": sorted(result.loc[result.level.eq("program_absent"), "program"].unique().tolist()),
         "max_months": args.max_months,
+        "nport_title_split": {
+            "holdings_source": str(args.nport_holdings) if title_series else "skipped: %s not found" % args.nport_holdings,
+            "cusips_with_unanimous_title_series": len(title_series),
+            "resolved": int(result.level.eq("program_nport_title").sum()),
+            "unresolved_by_reason": (result.loc[result.level.eq("program_tied") & result.title_evidence.ne(""), "title_evidence"]
+                                     .str.replace(r"^nport_title:\S+ ", "", regex=True).value_counts().to_dict()),
+        },
         "maturity_split": {
             "deals_source": str(args.deals) if args.deals.exists() else "skipped: %s not found" % args.deals,
             "deals_with_stated_maturity": len(maturities),

@@ -129,6 +129,29 @@ resolved, _, _ = match_frames(
 check(len(resolved) == 1 and resolved.iloc[0].deal_url.endswith("beta-2"),
       "UNIT explicit TRACE series resolves collision")
 
+# Holders' N-PORT titles separate adjacent-month twins that share a TRACE
+# issue month: Galilei Re 2016-1 (Dec 2016) and 2017-1 (Jan 2017) both pass
+# the date guard for a security issued in December, and without the title the
+# earlier series wins on distance.
+galilei = pd.DataFrame([
+    deal("Galilei Re Ltd. (Series 2016-1)", "Dec 2016", "galilei-2016-1"),
+    deal("Galilei Re Ltd. (Series 2017-1)", "Jan 2017", "galilei-2017-1"),
+])
+galilei_sec = pd.DataFrame([security("000000AD5", "GALILEI RE LTD", "2016-12-21")])
+untitled, _, _ = match_frames(galilei, galilei_sec)
+check(len(untitled) == 1 and untitled.iloc[0].deal_url.endswith("2016-1"),
+      "UNIT without a title the earlier twin wins on issue month")
+titled, _, _ = match_frames(galilei, galilei_sec, {"000000AD5": "2017-1"})
+check(len(titled) == 1 and titled.iloc[0].deal_url.endswith("2017-1"),
+      "UNIT holder title re-points the match to the named twin")
+check("nport_title_split" in titled.iloc[0].match_method and "agrees" in titled.iloc[0].series_evidence,
+      "UNIT title split is recorded in method and series evidence")
+# A title naming a series the directory lacks keeps the match, capped and flagged.
+coarse, _, _ = match_frames(galilei.iloc[[0]], galilei_sec, {"000000AD5": "2016-2"})
+check(len(coarse) == 1 and coarse.iloc[0].match_confidence != "high"
+      and "not in directory" in coarse.iloc[0].series_evidence,
+      "GUARD title absent from directory does not drop the match but caps confidence")
+
 check(extract_series("Home Re 2021-1 Ltd.") == "2021-1",
       "UNIT unlabelled Artemis series inside the legal name")
 check(normalise_issuer("Home Re 2021-1 Ltd.", "artemis") == "HOME RE",

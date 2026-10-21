@@ -58,6 +58,35 @@ def series_from_deal_url(url: str | None) -> list[str]:
     return [f"{year}-{int(number)}" for year, number in SERIES_IN_SLUG.findall(slug)]
 
 
+def normalize_series(series: str | None) -> str:
+    """'2024-01' and '2024-1' compare equal; a trailing letter is kept."""
+    if not isinstance(series, str) or "-" not in series:
+        return ""
+    year, number = series.split("-", 1)
+    digits = re.match(r"(\d+)([A-Za-z]?)", number)
+    if not digits:
+        return series
+    return f"{year}-{int(digits.group(1))}{digits.group(2).upper()}"
+
+
+def title_series_map(holdings_path: Path) -> dict[str, str]:
+    """CUSIP -> the one series every fund-reported title for it names.
+
+    Used by build_bridge and extend_bridge as evidence. CUSIPs whose titles
+    disagree, or name no series, are absent, so a caller can treat presence
+    as unanimous.
+    """
+    if not holdings_path.exists():
+        return {}
+    holdings = pd.read_csv(holdings_path, low_memory=False, usecols=["fund_id", "accession", "cusip", "title"])
+    titles = titles_by_cusip(holdings)
+    return {
+        row.cusip: normalize_series(row.series_named[0])
+        for row in titles.itertuples(index=False)
+        if len(row.series_named) == 1
+    }
+
+
 def titles_by_cusip(holdings: pd.DataFrame) -> pd.DataFrame:
     """Distinct fund-reported titles per CUSIP, with the series each names."""
     rows = holdings[holdings["cusip"].notna()].copy()

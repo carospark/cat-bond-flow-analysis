@@ -57,7 +57,7 @@ TRADES_PATH = DATA / "trace_trades_clean.csv"
 BRIDGE_PATH = DATA / "bridge.csv"
 PROGRAM_BRIDGE_PATH = DATA / "bridge_program.csv"
 ATTRIBUTION_COLUMNS = ["cusip_id", "deal_url", "match_confidence"]
-PROGRAM_LEVELS_WITH_DEAL = {"program_nearest", "program_maturity_split"}
+PROGRAM_LEVELS_WITH_DEAL = {"program_nearest", "program_maturity_split", "program_nport_title"}
 DEALS_PATH = DATA / "deals.csv"
 DB_PATH = DATA / "raw" / "tier1" / "prediction_market_history.sqlite3"
 

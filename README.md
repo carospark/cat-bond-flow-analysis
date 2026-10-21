@@ -188,6 +188,20 @@ never modifies `bridge.csv`. The panel builder joins only the rows that name
 one deal, with match confidence `program`, so any test that needs identity
 rather than program membership can filter them out.
 
+Both builders also read the fund-reported security titles from the parsed
+N-PORT holdings when `data/processed/nport/fund_holdings.csv` exists.
+Holders name the series outright for about 640 CUSIPs. In the strict
+bridge a unanimous title decides between candidates that differ only in
+series when the directory has the named series, which is what separates
+adjacent-month twins that share a TRACE issue month; when the directory
+lacks the named series the match stands, capped at medium, with the
+disagreement in the series evidence. In the program bridge a title that
+names exactly one tied deal resolves the tie at level
+`program_nport_title` before the maturity split runs. Locally the title
+evidence split 49 pairs, raised the strict bridge from 677 to 699 deals,
+and cut the same-month ambiguities from 26 deals to 6; the event checks
+are unchanged.
+
 ## Checking the joins
 
 `src/event_check.py` is a validation gate, not a result. Around one Florida

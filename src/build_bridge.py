@@ -325,8 +325,27 @@ def _confidence(name_rank, month_distance, series_state, maturity_state):
     return "low"
 
 
-def match_frames(index, securities):
-    """Return bridge and diagnostic frames from Artemis and collapsed TRACE."""
+def _norm_series(series):
+    """'2024-01' == '2024-1'; a trailing letter is kept; '' when absent."""
+    if not series or "-" not in str(series):
+        return ""
+    year, number = str(series).split("-", 1)
+    digits = re.match(r"(\d+)([A-Za-z]?)", number)
+    return "%s-%d%s" % (year, int(digits.group(1)), digits.group(2).upper()) if digits else str(series)
+
+
+def match_frames(index, securities, title_series=None):
+    """Return bridge and diagnostic frames from Artemis and collapsed TRACE.
+
+    ``title_series`` maps a CUSIP to the series its holders name in Form
+    N-PORT ("Galilei Re 2017-1 Class A"). When the directory has a candidate
+    stating that series, candidates stating a different series are rejected,
+    which is what separates adjacent-month twins that share a TRACE issue
+    month. When the directory has no candidate with that series, the match
+    is kept but capped at medium confidence and the disagreement is written
+    into the series evidence.
+    """
+    title_series = {k: _norm_series(v) for k, v in (title_series or {}).items()}
     art = index.copy().reset_index(drop=True)
     art["artemis_id"] = art.index.astype(int)
     art["issuer_key"] = art.issuer_name.map(lambda x: normalise_issuer(x, "artemis"))
@@ -354,6 +373,7 @@ def match_frames(index, securities):
     for trace_row in sec.itertuples(index=False):
         tr = trace_row._asdict()
         month = tr["month_ordinal"]
+        title = title_series.get(tr["cusip_id"], "")
         candidates = []
         maturity_rejections = 0
         if month is not None and not pd.isna(month):
@@ -382,15 +402,38 @@ def match_frames(index, securities):
                 if not maturity_ok:
                     maturity_rejections += 1
                     continue
+                title_state = ""
+                if title:
+                    if not a_series:
+                        title_state = "deal_series_not_stated"
+                    elif _norm_series(a_series) == title:
+                        title_state = "agrees"
+                    else:
+                        title_state = "contradicts"
                 score = (name["rank"], 1 if series_state == "exact_series" else 0,
-                         -month_distance)
+                         1 if title_state == "agrees" else 0, -month_distance)
                 candidates.append((score, name, month_distance, series_state,
-                                   maturity_state, maturity_text, ar))
+                                   maturity_state, maturity_text, ar, title_state))
+
+        # Holders' titles decide between twins only when the directory has the
+        # series they name; otherwise the directory is the coarser source and
+        # the match stands, flagged.
+        title_rejections = 0
+        title_absent_from_directory = False
+        if title and candidates:
+            if any(item[7] == "agrees" for item in candidates):
+                kept = [item for item in candidates if item[7] != "contradicts"]
+                title_rejections = len(candidates) - len(kept)
+                candidates = kept
+            elif any(item[7] == "contradicts" for item in candidates):
+                title_absent_from_directory = True
 
         if not candidates:
             reason = "no_name_and_date_candidate"
             if maturity_rejections:
                 reason = "candidate_contradicted_by_maturity"
+            if title_rejections:
+                reason = "candidate_contradicted_by_nport_title"
             trace_diagnostics.append({"cusip_id": tr["cusip_id"], "reason": reason,
                                       "candidate_count": 0, "detail": ""})
             continue
@@ -410,7 +453,7 @@ def match_frames(index, securities):
             })
             continue
 
-        _, name, distance, series_state, maturity_state, maturity_text, ar = best[0]
+        _, name, distance, series_state, maturity_state, maturity_text, ar, title_state = best[0]
         confidence = _confidence(name["rank"], distance, series_state, maturity_state)
         name_source = tr.get("issuer_name_source") or "master"
         method = name["method"]
@@ -419,6 +462,21 @@ def match_frames(index, securities):
             # taken from a later master row is still the master's own identity.
             confidence = "medium" if confidence == "high" else confidence
             method = method + "+ticker_inferred_name"
+        series_evidence = series_state
+        if title:
+            if title_state == "agrees":
+                series_evidence += "; nport_title %s agrees" % title
+                if title_rejections:
+                    method = method + "+nport_title_split"
+            elif title_absent_from_directory:
+                # The holders name a series the directory does not list for this
+                # issuer: Merna Re II 2024-2 on the directory's single 2024-1
+                # entry. The directory is the coarser source; keep the match
+                # but say so and do not call it high confidence.
+                series_evidence += "; nport_title %s not in directory for this issuer" % title
+                confidence = "medium" if confidence == "high" else confidence
+            else:
+                series_evidence += "; nport_title %s, deal series not stated" % title
         date_evidence = ("same issue month" if distance == 0 else
                          "TRACE issue month is adjacent to Artemis month")
         selected.append({
@@ -447,7 +505,7 @@ def match_frames(index, securities):
             "name_evidence": "Artemis '%s' -> %s; TRACE '%s' -> %s; TRACE name source: %s" %
                              (ar["issuer_name"], ar["issuer_key"],
                               tr["issuer_nm"], tr["issuer_key"], name_source),
-            "series_evidence": series_state,
+            "series_evidence": series_evidence,
             "date_evidence": date_evidence,
             "maturity_evidence": maturity_state + ": " + maturity_text,
             "coupon_evidence": _coupon_evidence(pd.Series(tr)),
@@ -557,7 +615,15 @@ def summarize(index, securities, bridge, unmatched_artemis, unmatched_trace):
     }
 
 
-def build(index_path=INDEX_PATH, trace_path=TRACE_PATH):
+def load_title_series(holdings_path):
+    """CUSIP -> series named unanimously by N-PORT holders; {} when no holdings file."""
+    if holdings_path is None or not Path(holdings_path).exists():
+        return {}
+    from resolve_ties_from_nport import title_series_map
+    return title_series_map(Path(holdings_path))
+
+
+def build(index_path=INDEX_PATH, trace_path=TRACE_PATH, holdings_path=None):
     index = pd.read_csv(index_path, dtype=str, keep_default_na=False)
     expected = {"issuer_name", "deal_url", "sponsor", "size_text", "date_text"}
     missing = expected - set(index.columns)
@@ -565,8 +631,15 @@ def build(index_path=INDEX_PATH, trace_path=TRACE_PATH):
         raise ValueError("Artemis index missing columns: %s" % ", ".join(sorted(missing)))
     trace = pd.read_csv(trace_path, dtype=str, keep_default_na=False)
     securities = collapse_trace(trace)
-    bridge, unmatched_artemis, unmatched_trace = match_frames(index, securities)
+    title_series = load_title_series(holdings_path)
+    bridge, unmatched_artemis, unmatched_trace = match_frames(index, securities, title_series)
     summary = summarize(index, securities, bridge, unmatched_artemis, unmatched_trace)
+    summary["nport_title_evidence"] = {
+        "holdings_source": str(holdings_path) if title_series else "none",
+        "cusips_with_unanimous_title_series": len(title_series),
+        "pairs_split_by_title": int(bridge.match_method.str.contains("nport_title_split").sum()) if not bridge.empty else 0,
+        "pairs_title_not_in_directory": int(bridge.series_evidence.str.contains("not in directory").sum()) if not bridge.empty else 0,
+    }
     return bridge, unmatched_artemis, unmatched_trace, summary
 
 
@@ -574,10 +647,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--index", type=Path, default=INDEX_PATH)
     parser.add_argument("--trace", type=Path, default=TRACE_PATH)
+    parser.add_argument("--nport-holdings", type=Path,
+                        default=ROOT / "data" / "processed" / "nport" / "fund_holdings.csv",
+                        help="parsed N-PORT holdings whose titles name series (optional)")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "data")
     args = parser.parse_args(argv)
 
-    bridge, unmatched_artemis, unmatched_trace, summary = build(args.index, args.trace)
+    bridge, unmatched_artemis, unmatched_trace, summary = build(
+        args.index, args.trace, args.nport_holdings)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     bridge.to_csv(args.output_dir / BRIDGE_PATH.name, index=False, encoding="utf-8")
     unmatched_artemis.to_csv(args.output_dir / UNMATCHED_ARTEMIS_PATH.name,

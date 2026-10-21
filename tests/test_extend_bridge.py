@@ -14,6 +14,7 @@ from extend_bridge import (  # noqa: E402
     deal_maturities,
     family_key,
     program_key,
+    split_by_title,
     split_ties,
 )
 
@@ -25,6 +26,34 @@ def deal(name, date, suffix):
 
 def security(cusip, issuer, issue):
     return {"cusip_id": cusip, "issuer_nm": issuer, "trace_issue_date": issue}
+
+
+class TitleSplitTests(unittest.TestCase):
+    def tied(self, cusip, *slugs):
+        return {"cusip_id": cusip, "level": "program_tied", "deal_url": "",
+                "tied_deal_urls": "|".join("https://example.invalid/" + s for s in slugs)}
+
+    def test_title_naming_one_tied_deal_resolves_it(self):
+        result = pd.DataFrame([
+            self.tied("00000AAA1", "kilimanjaro-iii-re-ltd-series-2019-1", "kilimanjaro-iii-re-ltd-series-2019-2"),
+            self.tied("00000AAB9", "kilimanjaro-iii-re-ltd-series-2019-1", "kilimanjaro-iii-re-ltd-series-2019-2"),
+            self.tied("00000AAC7", "merna-re-ii-ltd-series-2022-2", "merna-re-ii-ltd-series-2022-3"),
+            {"cusip_id": "00000AAD5", "level": "program_nearest", "deal_url": "https://example.invalid/x", "tied_deal_urls": ""},
+        ])
+        out = split_by_title(result, {"00000AAA1": "2019-1", "00000AAC7": "2022-9", "00000AAD5": "2020-1"}).set_index("cusip_id")
+        self.assertEqual(out.loc["00000AAA1", "level"], "program_nport_title")
+        self.assertTrue(out.loc["00000AAA1", "deal_url"].endswith("series-2019-1"))
+        self.assertEqual(out.loc["00000AAA1", "tied_deal_urls"], "")
+        self.assertIn("names kilimanjaro-iii-re-ltd-series-2019-1", out.loc["00000AAA1", "title_evidence"])
+        self.assertEqual(out.loc["00000AAB9", "level"], "program_tied")  # no title
+        self.assertEqual(out.loc["00000AAC7", "level"], "program_tied")
+        self.assertIn("names none", out.loc["00000AAC7", "title_evidence"])
+        self.assertEqual(out.loc["00000AAD5", "level"], "program_nearest")  # untouched
+
+    def test_series_number_formats_compare_equal(self):
+        result = pd.DataFrame([self.tied("00000AAE3", "phoenician-re-ltd-series-2020-01", "phoenician-re-ltd-series-2020-02")])
+        out = split_by_title(result, {"00000AAE3": "2020-2"}).set_index("cusip_id")
+        self.assertEqual(out.loc["00000AAE3", "level"], "program_nport_title")
 
 
 class ProgramKeyTests(unittest.TestCase):
