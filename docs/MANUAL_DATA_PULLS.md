@@ -97,6 +97,22 @@ enough for returns; fund size is per fund.
 | Plenum CAT Bond Defensive Fund | I EUR | LI0227305906 |
 | Plenum CAT Bond Dynamic Fund | I USD | LI1115702857 |
 
+**Better than NAV inference for Schroders, found 2026-10-21:** the fund's
+annual and semi-annual reports are public and carry, per sub-fund, a
+Statement of Changes in Net Assets with "Net proceeds from issue of
+shares", "Payment for shares redeemed", distributions, and opening and
+closing net assets, plus NAV per share for every class. That is observed
+flow twice a year, the UCITS counterpart of N-PORT. The current reports
+are on Schroders' document store (`GAIA-SAR-LUEN.pdf`, `GAIA-AR-CHEN.pdf`)
+and on Fundsquare; older years are archived by the Bulgarian Financial
+Supervision Commission at `fsc.bg/wp-content/uploads/...` (verified: FY2019
+and FY2020 audited reports and the March 2020 semi-annual, all with the
+Cat Bond column). Example, October 2025 to March 2026: subscriptions USD
+408.1m, redemptions USD 470.4m, net assets 3,938.3m to 3,946.8m. The same
+applies to every Luxembourg and Irish UCITS in the registry, since their
+annual accounts are public filings. A report puller and statement parser
+is the next build; the Bloomberg export is still wanted for monthly NAV.
+
 Alternatives if the terminal is not available: accept the Schroders fund
 centre disclaimer once in a Claude-in-Chrome session and let the assistant
 read the historic-prices view; email LAFV (info@lafv.li) for API access,
