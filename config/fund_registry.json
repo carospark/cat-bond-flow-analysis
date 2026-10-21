@@ -167,10 +167,10 @@
       "domicile": "Luxembourg (UCITS)",
       "isins": {"I Acc USD": "LU0951570760", "IF Acc USD": "SCHDR_F00000QKZK (Schroders fund-centre id)", "A Acc EUR hedged": "LU2399869788", "C Acc CHF hedged": "LU2123042801", "C Acc GBP hedged": "LU2197696102"},
       "official_page": "https://www.schroders.com/en-gb/uk/intermediary/fund-centre/?externalId=SCHDR_F00000QKZK",
-      "nav_source": "Schroders fund centre: historic prices per share class; monthly factsheet PDF with fund size (about EUR 3.45bn mid-2026)",
+      "nav_source": "Schroders fund centre: historic prices per share class behind an investor self-certification; Fundsquare (fundsquare.net, fund-tree idInstr=174135, 40 share classes) shows the latest weekly NAV publicly and history after login; Bloomberg by ISIN",
       "flow_observed": false,
       "status": "planned",
-      "note": "Resolved 2026-10-21 from public search; nothing pulled. Flow must be inferred from fund size and return."
+      "note": "Resolved 2026-10-21 from public search; nothing pulled. Every history route needs a one-time action by Caro (see docs/MANUAL_DATA_PULLS.md). Flow must be inferred from fund size and return."
     },
     {
       "id": "gam_star_cat_bond",

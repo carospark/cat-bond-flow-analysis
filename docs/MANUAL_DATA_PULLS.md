@@ -69,6 +69,43 @@ record the landing page and download timestamp, hash it, and place it under
 `data/raw/tier1/manual/swiss_re_ils/`. A landing-page response alone does not
 count as an archived publication.
 
+## UCITS cat bond fund NAV and fund-size histories
+
+Checked 2026-10-21: no manager publishes NAV history without a gate.
+Schroders' fund centre and GAM's fund pages sit behind an investor
+self-certification, Fundsquare (the Luxembourg publication venue) shows only
+the latest NAV without a login, the Liechtenstein venue LAFV offers its fund
+API only after an onboarding request, Plenum's UCITS cat-bond fund index
+downloads go through a form with non-reproduction terms, and Twelve has no
+public fund page. None of these were accepted or submitted by the assistant.
+
+The simplest route is the same Bloomberg terminal visit as the Swiss Re
+indices. For each share class below, export the daily or weekly NAV
+history (`FUND_NET_ASSET_VAL` or `PX_LAST` on the fund ticker) and the fund
+size history (`FUND_TOTAL_ASSETS`), with currency, from inception to the
+export date, retaining field names and the export timestamp. Store under
+`data/raw/tier1/manual/bloomberg/ucits/` and record hashes and row
+coverage in `data/MANIFEST.local.md`. One representative class per fund is
+enough for returns; fund size is per fund.
+
+| Fund | Share class | ISIN |
+|---|---|---|
+| Schroder GAIA Cat Bond | I Acc USD | LU0951570760 |
+| Schroder GAIA Cat Bond | IF Acc USD | LU0951570687 |
+| GAM Star Cat Bond (GAM Swiss Re Cat Bond) | Institutional USD Acc | see fund tree; EUR hedged IE00B6TLWG59 |
+| Twelve Cat Bond Fund (Twelve Capital ICAV) | I | IE00BD2B9H19 |
+| Plenum CAT Bond Defensive Fund | I EUR | LI0227305906 |
+| Plenum CAT Bond Dynamic Fund | I USD | LI1115702857 |
+
+Alternatives if the terminal is not available: accept the Schroders fund
+centre disclaimer once in a Claude-in-Chrome session and let the assistant
+read the historic-prices view; email LAFV (info@lafv.li) for API access,
+which covers both Plenum funds and is free for third parties with a
+legitimate interest; submit Plenum's index form for the "Market Survey (All
+CAT Bond UCITS Funds)" and index history, which gives the whole UCITS
+universe's size (16 funds, about USD 21bn, a third of the market) in one
+file. Fund flow for these funds is then backed out from size and return.
+
 ## Brookmont 2026 NAV history
 
 The issuer page currently exposes current NAV and holdings, but its embedded
