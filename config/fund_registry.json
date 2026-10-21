@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-10-21",
+  "notes": [
+    "Registry of funds whose NAV, return, and flow series feed the fund-flow track.",
+    "SEC entries were resolved on 2026-10-21 from EDGAR full-text search (forms=NPORT-P) and each registrant's series list; see docs/SOURCES.md.",
+    "Form N-PORT Part B carries, for each of the preceding three months, net assets, total return per class, and the value of shares sold, reinvested, and redeemed. Part C carries holdings with CUSIPs. Only the quarter-end filing is public, 60 days after quarter end, but it reports all three months.",
+    "A series_id of null means the registrant files a single series; select by CIK and confirm seriesName in the XML.",
+    "Entries with role 'mention_only' matched the search terms because they hold or describe cat-bond funds; they are listed so a later pass does not rediscover them."
+  ],
+  "sec_registered": [
+    {
+      "id": "stone_ridge_reinsurance_rrp_interval",
+      "fund_name": "Stone Ridge Reinsurance Risk Premium Interval Fund",
+      "registrant": "Stone Ridge Trust II",
+      "cik": "0001581005",
+      "series_id": null,
+      "series_name_in_filing": "Stone Ridge Reinsurance Risk Premium Interval Fund",
+      "ticker": "SRRIX",
+      "structure": "interval fund",
+      "role": "fund",
+      "nport_first_period": "2019-10-31",
+      "nport_latest_period": "2026-07-31",
+      "holdings_cusip_level": true,
+      "evidence": "Latest N-PORT (filed 2026-09-29): net assets 1,581,182,444; 318 holdings, 317 with CUSIP; mon1Flow sales 42,898,713 redemption 92,482,181.",
+      "status": "active"
+    },
+    {
+      "id": "stone_ridge_high_yield_rrp",
+      "fund_name": "Stone Ridge High Yield Reinsurance Risk Premium Fund",
+      "registrant": "Stone Ridge Trust",
+      "cik": "0001559992",
+      "series_id": "S000039565",
+      "series_name_in_filing": "Stone Ridge High Yield Reinsurance Risk Premium Fund",
+      "ticker": "SHRIX",
+      "structure": "open-end",
+      "role": "fund",
+      "nport_first_period": "2019-10-31",
+      "nport_latest_period": "2026-07-31",
+      "holdings_cusip_level": true,
+      "evidence": "Series S000039565 in the registrant's series list; 93 full-text hits on the series name across NPORT-P filings, periods 2019-10-31 through 2026-07-31. Stone Ridge Trust files 123 series, so the puller must filter by seriesId.",
+      "status": "active"
+    },
+    {
+      "id": "stone_ridge_reinsurance_rrp_open_end",
+      "fund_name": "Stone Ridge Reinsurance Risk Premium Fund",
+      "registrant": "Stone Ridge Trust",
+      "cik": "0001559992",
+      "series_id": "S000039564",
+      "series_name_in_filing": "Stone Ridge Reinsurance Risk Premium Fund",
+      "ticker": null,
+      "structure": "open-end",
+      "role": "fund",
+      "nport_first_period": null,
+      "nport_latest_period": null,
+      "holdings_cusip_level": null,
+      "evidence": "Series exists in the registrant's series list but has zero NPORT-P full-text hits; N-PORT began 2019, so the fund was likely merged or liquidated before then. Pre-2019 history would come from N-Q and N-CSR, not N-PORT.",
+      "status": "inactive_verify"
+    },
+    {
+      "id": "pioneer_ils_interval",
+      "fund_name": "Pioneer ILS Interval Fund (now Victory Pioneer ILS Interval Fund)",
+      "registrant": "Victory Pioneer ILS Interval Fund",
+      "cik": "0001616037",
+      "series_id": null,
+      "series_name_in_filing": "Pioneer ILS Interval Fund",
+      "ticker": "XILSX",
+      "structure": "interval fund",
+      "role": "fund",
+      "nport_first_period": "2019-10-31",
+      "nport_latest_period": "2026-07-31",
+      "holdings_cusip_level": true,
+      "evidence": "Latest N-PORT (filed 2026-09-28): net assets 864,794,098; 134 holdings, 120 with CUSIP; mon2Flow sales 16,521,012 redemption 28,874,066. Renamed after Victory Capital's 2025 acquisition of Amundi US; same CIK.",
+      "status": "active"
+    },
+    {
+      "id": "victory_pioneer_cat_bond",
+      "fund_name": "Victory Pioneer CAT Bond Fund",
+      "registrant": "Victory Portfolios IV",
+      "cik": "0002042316",
+      "series_id": "S000089751",
+      "series_name_in_filing": "Victory Pioneer CAT Bond Fund",
+      "ticker": null,
+      "structure": "open-end",
+      "role": "fund",
+      "nport_first_period": "2025-04-30",
+      "nport_latest_period": "2026-07-31",
+      "holdings_cusip_level": null,
+      "evidence": "Series S000089751 in the registrant's series list; full-text hits from 2025-04-30. Victory Portfolios IV files 29 series, so filter by seriesId. Predecessor below.",
+      "predecessor_id": "pioneer_cat_bond_predecessor",
+      "status": "active"
+    },
+    {
+      "id": "pioneer_cat_bond_predecessor",
+      "fund_name": "Pioneer CAT Bond Fund",
+      "registrant": "Pioneer Series Trust VII",
+      "cik": "0001140157",
+      "series_id": "S000078993",
+      "series_name_in_filing": "Pioneer CAT Bond Fund",
+      "ticker": null,
+      "structure": "open-end",
+      "role": "fund",
+      "nport_first_period": "2023-01-31",
+      "nport_latest_period": "2025-01-31",
+      "holdings_cusip_level": null,
+      "evidence": "Series S000078993 in the registrant's series list; 17 full-text hits on the fund name, periods 2023-01-31 through 2025-01-31, before the reorganization into Victory Portfolios IV.",
+      "successor_id": "victory_pioneer_cat_bond",
+      "status": "reorganized"
+    },
+    {
+      "id": "brookmont_catastrophic_bond_etf",
+      "fund_name": "Brookmont Catastrophic Bond ETF",
+      "registrant": "ETF Opportunities Trust",
+      "cik": "0001771146",
+      "series_id": "S000088027",
+      "series_name_in_filing": "Brookmont Catastrophic Bond ETF",
+      "ticker": "ILS",
+      "structure": "ETF",
+      "role": "fund",
+      "nport_first_period": "2025-06-30",
+      "nport_latest_period": "2026-06-30",
+      "holdings_cusip_level": true,
+      "evidence": "Series S000088027 among the registrant's 652 series; 7 full-text hits, periods 2025-06-30 through 2026-06-30. Daily NAV and holdings already archived from the issuer page as tier1 source brookmont_ils_etf; N-PORT adds the monthly flow fields. ETF flow is also shares outstanding times NAV from the issuer page.",
+      "status": "active"
+    },
+    {
+      "id": "cnr_select_strategies",
+      "fund_name": "City National Rochdale Select Strategies Fund",
+      "registrant": "City National Rochdale Select Strategies Fund",
+      "cik": "0001690996",
+      "series_id": null,
+      "series_name_in_filing": "City National Rochdale Select Strategies Fund",
+      "ticker": null,
+      "structure": "interval fund",
+      "role": "fund",
+      "nport_first_period": "2019-10-31",
+      "nport_latest_period": "2026-07-31",
+      "holdings_cusip_level": false,
+      "evidence": "Latest N-PORT (filed 2026-09-28): net assets 238,405,936; 20 holdings, 1 with CUSIP. Reinsurance exposure is held through a subsidiary, so flows and returns are usable but holdings do not join to the bridge.",
+      "status": "active"
+    },
+    {
+      "id": "sterling_capital_funds",
+      "fund_name": "Sterling Capital Funds (holder of Stone Ridge reinsurance funds)",
+      "registrant": "Sterling Capital Funds",
+      "cik": "0000889284",
+      "series_id": null,
+      "role": "mention_only",
+      "evidence": "9 full-text hits on 'Reinsurance Risk Premium' as a holding, not as a fund.",
+      "status": "excluded"
+    },
+    {
+      "id": "fund_of_funds_mentions",
+      "fund_name": "A&Q Multi-Strategy Fund; Advisors Preferred Trust; Pioneer Asset Allocation Trust; Victory Variable Insurance Funds II; Jackson Credit Opportunities Fund; Investment Managers Series Trust II; Invesco AIM series",
+      "registrant": null,
+      "cik": null,
+      "series_id": null,
+      "role": "mention_only",
+      "evidence": "Matched 'Cat Bond Fund', 'catastrophe bonds', or 'event-linked' as holders or allocators. Possible later use for the holder track; not fund-level flow sources.",
+      "status": "excluded"
+    }
+  ],
+  "non_sec": [
+    {
+      "id": "schroder_gaia_cat_bond",
+      "fund_name": "Schroder GAIA Cat Bond",
+      "domicile": "Luxembourg (UCITS)",
+      "nav_source": "fund page / fundinfo",
+      "flow_observed": false,
+      "status": "planned"
+    },
+    {
+      "id": "gam_star_cat_bond",
+      "fund_name": "GAM Star Cat Bond",
+      "domicile": "Ireland (UCITS)",
+      "nav_source": "fund page / fundinfo",
+      "flow_observed": false,
+      "status": "planned"
+    },
+    {
+      "id": "twelve_cat_bond",
+      "fund_name": "Twelve Cat Bond Fund",
+      "domicile": "Luxembourg (UCITS)",
+      "nav_source": "fund page / fundinfo",
+      "flow_observed": false,
+      "status": "planned"
+    },
+    {
+      "id": "plenum_cat_bond",
+      "fund_name": "Plenum CAT Bond Fund",
+      "domicile": "Liechtenstein (UCITS)",
+      "nav_source": "fund page / fundinfo",
+      "flow_observed": false,
+      "status": "planned"
+    },
+    {
+      "id": "lgt_cat_bond",
+      "fund_name": "LGT Cat Bond Fund",
+      "domicile": "Liechtenstein / Ireland (UCITS)",
+      "nav_source": "fund page / fundinfo",
+      "flow_observed": false,
+      "status": "planned"
+    },
+    {
+      "id": "leadenhall_ucits",
+      "fund_name": "Leadenhall UCITS ILS Fund",
+      "domicile": "Ireland (UCITS)",
+      "nav_source": "fund page / fundinfo",
+      "flow_observed": false,
+      "status": "planned"
+    }
+  ]
+}

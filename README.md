@@ -52,7 +52,9 @@ src/extract_reference_series.py  extract Aon, Guy Carpenter, and Lane series
 src/clean_trace_trades.py     raw TRACE messages -> one clean trade table
 src/build_deal_panel.py       deal-day trades joined to hazard-market activity
 src/event_check.py            end-to-end check of the joins around one hurricane
+src/fund_registry.py          load and EDGAR-verify the fund registry
 config/tier1_sources.json     the source registry: publisher, title, URL, role
+config/fund_registry.json     funds whose NAV, return, and flow series are pulled
 config/market_signal_sources.json  public API registry for market signals
 docs/SOURCES.md               what each source is and why it is used
 docs/MANUAL_DATA_PULLS.md     terminal/form-gated pulls and acceptance checks
@@ -206,6 +208,45 @@ the season's peak has passed, and the unexposed deals stay within a fraction
 of a point. Contract activity leads Ian's landfall by a week and peaks in
 Milton's landfall week. Outputs are gitignored under `data/event_checks/`;
 the figures are in the local manifest.
+
+## Fund flow
+
+The fund-flow track starts from `config/fund_registry.json`, the list of
+funds whose NAV, return, and flow series are pulled. The SEC entries were
+resolved from EDGAR full-text search over Form N-PORT filings and each
+registrant's series list, and every entry carries the evidence that put it
+there. The registry is the identifier screen for the N-PORT pull, so its
+hash goes into the local manifest with each pull.
+
+```bash
+./.venv/bin/python src/fund_registry.py            # list the screen and its hash
+./.venv/bin/python src/fund_registry.py --verify   # check every entry against EDGAR
+```
+
+Form N-PORT Part B reports, for each of the preceding three months, net
+assets, total return per class, and the value of shares sold, reinvested,
+and redeemed. For the registered interval funds that is observed
+subscriptions and redemptions, not an inference from the AUM identity.
+Part C holdings carry CUSIPs that join to the bridge. UCITS funds are listed
+as planned; their flow has to be backed out from fund size and return.
+
+```bash
+./.venv/bin/python src/pull_nport.py --as-of YYYY-MM-DD   # archive every public filing
+./.venv/bin/python src/parse_nport.py                     # flows, returns, holdings
+```
+
+The puller writes the screen it used, with the registry's hash, under
+`data/raw/sec_nport/screens/`, lists filings per series through EDGAR's
+company browser so multi-series trusts resolve to one fund, checks every
+downloaded XML against the registry's series name, and is resumable. The
+parser writes `fund_flows.csv`, `fund_returns.csv`, and `fund_holdings.csv`
+under `data/processed/nport/` with a summary that reports bridge overlap.
+Two things it handles that the raw filings do not make obvious: Month 3 of
+each filing is the report month (verified against the Brookmont ETF's daily
+NAV), and some filers reported redemptions as negative numbers until 2024,
+so all flow fields are stored as magnitudes with a flag where a sign was
+normalized. Only the quarter-end filing is public, so the monthly series
+arrives in quarterly batches with a 60-day lag.
 
 ## Data
 
