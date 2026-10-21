@@ -325,6 +325,42 @@ def _confidence(name_rank, month_distance, series_state, maturity_state):
     return "low"
 
 
+def _propagate_title_splits(bridge):
+    """Carry a title split to its siblings: same issuer, issue date, and maturity.
+
+    Notes issued the same day by the same issuer with the same maturity are one
+    series' tranche set. When holders' titles re-point some of them to a deal,
+    the rest of the set follows at medium confidence with the evidence named,
+    so a program is not left half on one series and half on another because
+    only some tranches happened to be held by a fund that writes the series.
+    """
+    split = bridge[bridge.match_method.str.contains("nport_title_split", na=False)]
+    if split.empty:
+        return bridge
+    bridge = bridge.copy()
+    keys = ["trace_issuer_nm", "trace_issue_date", "trace_maturity_date"]
+    for key, group in split.groupby(keys):
+        targets = group.deal_url.unique()
+        if len(targets) != 1:
+            continue
+        target = targets[0]
+        mask = (bridge[keys[0]].eq(key[0]) & bridge[keys[1]].eq(key[1]) & bridge[keys[2]].eq(key[2])
+                & bridge.deal_url.ne(target))
+        if not mask.any():
+            continue
+        exemplar = group.iloc[0]
+        for column in ("deal_url", "artemis_issuer_name", "artemis_sponsor", "artemis_size_text",
+                       "artemis_date_text", "artemis_series_id"):
+            bridge.loc[mask, column] = exemplar[column]
+        bridge.loc[mask, "match_confidence"] = bridge.loc[mask, "match_confidence"].where(
+            bridge.loc[mask, "match_confidence"].eq("low"), "medium")
+        bridge.loc[mask, "match_method"] = bridge.loc[mask, "match_method"] + "+maturity_group_of_title_split"
+        bridge.loc[mask, "series_evidence"] = (
+            bridge.loc[mask, "series_evidence"] + "; follows title-split siblings %s with maturity %s"
+            % ("|".join(group.cusip_id), key[2]))
+    return bridge
+
+
 def _norm_series(series):
     """'2024-01' == '2024-1'; a trailing letter is kept; '' when absent."""
     if not series or "-" not in str(series):
@@ -394,7 +430,12 @@ def match_frames(index, securities, title_series=None):
                 month_distance = abs(int(ar["month_ordinal"]) - int(month))
                 a_series, t_series = ar["series_id"], tr["series_id"]
                 if a_series and t_series and a_series != t_series:
-                    continue
+                    # TRACE's series token comes from a master name variant and
+                    # can be wrong for part of a program (Galilei Re labels its
+                    # four-year 2017-1 notes "2016-1"). A unanimous holder title
+                    # naming this candidate's series outranks it.
+                    if not (title and _norm_series(a_series) == title):
+                        continue
                 series_state = ("exact_series" if a_series and t_series else
                                 "missing_or_not_stated")
                 maturity_ok, maturity_state, maturity_text = _maturity_evidence(
@@ -516,6 +557,7 @@ def match_frames(index, securities, title_series=None):
 
     bridge = pd.DataFrame(selected)
     if not bridge.empty:
+        bridge = _propagate_title_splits(bridge)
         bridge = bridge.sort_values(["artemis_date_text", "artemis_issuer_name", "cusip_id"],
                                     kind="stable").reset_index(drop=True)
 

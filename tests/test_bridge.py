@@ -151,6 +151,26 @@ coarse, _, _ = match_frames(galilei.iloc[[0]], galilei_sec, {"000000AD5": "2016-
 check(len(coarse) == 1 and coarse.iloc[0].match_confidence != "high"
       and "not in directory" in coarse.iloc[0].series_evidence,
       "GUARD title absent from directory does not drop the match but caps confidence")
+# TRACE's master can label a whole program with one series: Galilei Re's
+# four-year 2017-1 notes carry "2016-1". A unanimous holder title outranks
+# that label, and siblings with the same issuer, issue date, and maturity
+# follow the split even when no fund wrote a series for them.
+labelled = pd.DataFrame([
+    security("000000AF1", "GALILEI RE LTD. 2016-1", "2016-12-21", maturity="2021-01-08"),
+    security("000000AG9", "GALILEI RE LTD. 2016-1", "2016-12-21", maturity="2021-01-08"),
+    security("000000AH7", "GALILEI RE LTD. 2016-1", "2016-12-21", maturity="2020-01-08"),
+])
+overridden, _, _ = match_frames(galilei, labelled, {"000000AF1": "2017-1"})
+by_cusip = overridden.set_index("cusip_id")
+check(by_cusip.loc["000000AF1"].deal_url.endswith("2017-1")
+      and "nport_title_split" in by_cusip.loc["000000AF1"].match_method,
+      "UNIT holder title outranks the TRACE series label")
+check(by_cusip.loc["000000AG9"].deal_url.endswith("2017-1")
+      and "maturity_group_of_title_split" in by_cusip.loc["000000AG9"].match_method
+      and by_cusip.loc["000000AG9"].match_confidence == "medium",
+      "UNIT same-maturity sibling follows the title split at medium")
+check(by_cusip.loc["000000AH7"].deal_url.endswith("2016-1"),
+      "GUARD the other maturity group stays on its own series")
 
 check(extract_series("Home Re 2021-1 Ltd.") == "2021-1",
       "UNIT unlabelled Artemis series inside the legal name")
