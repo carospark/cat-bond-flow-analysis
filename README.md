@@ -250,7 +250,12 @@ each filing is the report month (verified against the Brookmont ETF's daily
 NAV), and some filers reported redemptions as negative numbers until 2024,
 so all flow fields are stored as magnitudes with a flag where a sign was
 normalized. Only the quarter-end filing is public, so the monthly series
-arrives in quarterly batches with a 60-day lag.
+arrives in quarterly batches with a 60-day lag. One series the form does
+not carry is distributions: total return includes them and net assets lose
+the cash part, so the AUM identity closes only once they are added back.
+They can be backed out as the residual of the identity quarter by quarter,
+which is large in December for the Stone Ridge funds and steady for the
+monthly payers, or taken from N-CSR.
 
 ```bash
 ./.venv/bin/python src/build_fund_holdings.py --deals /path/to/deals.csv
@@ -282,6 +287,21 @@ archived snapshot into one series, splits each net-asset change into flow
 and non-flow, and reconciles against the same fund's N-PORT monthly flows
 once a quarter's filing is public. A gap between snapshots is carried as
 one row spanning the gap, not spread over days.
+
+```bash
+./.venv/bin/python src/resolve_ties_from_nport.py
+```
+
+Funds describe each position with a free-text title, and many titles name
+the series outright ("Kilimanjaro III Re 2019-1 Class A-1"). That is the
+evidence the program bridge lacks when same-month twins differ only in
+tenor. The resolver collects every title per CUSIP, requires the series to
+be stated as a year and number rather than inferred from a class letter,
+requires all titles for a CUSIP to agree, and writes a resolution table
+with the titles and funds as evidence. It never modifies the bridge
+tables. It also checks every strict-bridge CUSIP whose titles name a
+series against the bridged deal's series and lists the disagreements, which
+is where a wrong match would show up first.
 
 ## Data
 
