@@ -53,6 +53,10 @@ src/clean_trace_trades.py     raw TRACE messages -> one clean trade table
 src/build_deal_panel.py       deal-day trades joined to hazard-market activity
 src/event_check.py            end-to-end check of the joins around one hurricane
 src/fund_registry.py          load and EDGAR-verify the fund registry
+src/pull_nport.py             archive Form N-PORT filings per fund, with the screen used
+src/parse_nport.py            N-PORT filings -> monthly flows, returns, holdings
+src/build_fund_holdings.py    fund holdings joined to deals; fund marks vs TRACE
+src/build_etf_flows.py        daily ETF snapshots -> shares outstanding and flow
 config/tier1_sources.json     the source registry: publisher, title, URL, role
 config/fund_registry.json     funds whose NAV, return, and flow series are pulled
 config/market_signal_sources.json  public API registry for market signals
@@ -265,6 +269,19 @@ loss-affected bonds where the fund's mark and the last trade disagree about
 how much is left, which is itself a research object. Positions filed with
 an all-zero CUSIP, which are segregated-account cells and quota shares, are
 dropped rather than reported as bridge gaps.
+
+```bash
+./.venv/bin/python src/build_etf_flows.py
+```
+
+The ILS ETF is the one fund with a daily, observed flow series. Each
+nightly issuer snapshot records shares outstanding, net assets, and NAV;
+an ETF's shares change only through creations and redemptions, so the
+change in shares times NAV is investor flow. The compiler walks every
+archived snapshot into one series, splits each net-asset change into flow
+and non-flow, and reconciles against the same fund's N-PORT monthly flows
+once a quarter's filing is public. A gap between snapshots is carried as
+one row spanning the gap, not spread over days.
 
 ## Data
 
