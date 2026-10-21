@@ -6,10 +6,23 @@ PYTHON="$PROJECT_ROOT/.venv/bin/python"
 LOCK_DIR="$PROJECT_ROOT/data/.daily-non-artemis-pull.lock"
 
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-  print -u2 "daily non-Artemis pull already running"
-  exit 75
+  # A lock left behind by a crashed run (for example the EDEADLK aborts that
+  # macOS protected folders produce under launchd) would otherwise block every
+  # later run forever. Treat the lock as stale when its recorded PID is gone.
+  OWNER_PID="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+  if [[ -n "$OWNER_PID" ]] && kill -0 "$OWNER_PID" 2>/dev/null; then
+    print -u2 "daily non-Artemis pull already running (pid $OWNER_PID)"
+    exit 75
+  fi
+  print -u2 "removing stale lock left by pid ${OWNER_PID:-unknown}"
+  rm -rf "$LOCK_DIR"
+  if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    print -u2 "daily non-Artemis pull already running"
+    exit 75
+  fi
 fi
-trap 'rmdir "$LOCK_DIR"' EXIT INT TERM
+print $$ > "$LOCK_DIR/pid"
+trap 'rm -rf "$LOCK_DIR"' EXIT INT TERM
 
 cd "$PROJECT_ROOT"
 if [[ ! -x "$PYTHON" ]]; then

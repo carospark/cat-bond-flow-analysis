@@ -38,3 +38,8 @@ REVIEW_PROMPT.md
 .claude/
 notebooks/
 notes/
+
+# Rendered concept-note binaries and external review scratch
+docs/*.pdf
+docs/*.pptx
+.codex_artifacts/
