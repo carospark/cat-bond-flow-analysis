@@ -165,33 +165,45 @@
       "id": "schroder_gaia_cat_bond",
       "fund_name": "Schroder GAIA Cat Bond",
       "domicile": "Luxembourg (UCITS)",
-      "nav_source": "fund page / fundinfo",
+      "isins": {"I Acc USD": "LU0951570760", "IF Acc USD": "SCHDR_F00000QKZK (Schroders fund-centre id)", "A Acc EUR hedged": "LU2399869788", "C Acc CHF hedged": "LU2123042801", "C Acc GBP hedged": "LU2197696102"},
+      "official_page": "https://www.schroders.com/en-gb/uk/intermediary/fund-centre/?externalId=SCHDR_F00000QKZK",
+      "nav_source": "Schroders fund centre: historic prices per share class; monthly factsheet PDF with fund size (about EUR 3.45bn mid-2026)",
       "flow_observed": false,
-      "status": "planned"
+      "status": "planned",
+      "note": "Resolved 2026-10-21 from public search; nothing pulled. Flow must be inferred from fund size and return."
     },
     {
       "id": "gam_star_cat_bond",
-      "fund_name": "GAM Star Cat Bond",
+      "fund_name": "GAM Star Cat Bond (GAM Star Fund plc, sub-advised by Swiss Re / Fermat)",
       "domicile": "Ireland (UCITS)",
-      "nav_source": "fund page / fundinfo",
+      "isins": {"Institutional EUR Acc hedged": "IE00B6TLWG59", "Institutional GBP Acc hedged": "IE00B691BK23", "Institutional CHF Acc hedged": "IE00BVXBYN70", "M EUR Acc hedged": "IE00BZ5Z4Q84", "R EUR Acc hedged": "IE00BF5GGB04", "M USD Acc": "IE000PJQCAE1"},
+      "official_page": "https://www.gam.com/",
+      "nav_source": "GAM fund page and factsheet; aggregator sites show daily NAV",
       "flow_observed": false,
-      "status": "planned"
+      "status": "planned",
+      "note": "Share class names on aggregators now read 'GAM Swiss Re Cat Bond'. Resolved 2026-10-21; nothing pulled."
     },
     {
       "id": "twelve_cat_bond",
-      "fund_name": "Twelve Cat Bond Fund",
-      "domicile": "Luxembourg (UCITS)",
-      "nav_source": "fund page / fundinfo",
+      "fund_name": "Twelve Cat Bond Fund (Twelve Capital ICAV)",
+      "domicile": "Ireland (UCITS)",
+      "isins": {"I": "IE00BD2B9H19", "P": "IE00BD2B8K72", "SI1": "IE00BJVR1109", "P (newer)": "IE000CI5O743"},
+      "official_page": "https://www.twelvecapital.com/",
+      "nav_source": "Twelve Capital investor portal; aggregator sites show NAV and fund volume (about USD 4.4bn at 2025-10)",
       "flow_observed": false,
-      "status": "planned"
+      "status": "planned",
+      "note": "Domicile corrected to Ireland (ICAV) on 2026-10-21; no public fund page surfaced in search."
     },
     {
       "id": "plenum_cat_bond",
-      "fund_name": "Plenum CAT Bond Fund",
+      "fund_name": "Plenum CAT Bond Defensive Fund and Plenum CAT Bond Dynamic Fund",
       "domicile": "Liechtenstein (UCITS)",
-      "nav_source": "fund page / fundinfo",
+      "isins": {"Defensive I EUR": "LI0227305906", "Defensive R": "LI0115208543", "Defensive P2 USD": "LI0376845173", "Dynamic I USD": "LI1115702857", "Dynamic P USD": "LI1115712997"},
+      "official_page": "https://www.plenum.ch/",
+      "nav_source": "Plenum fund pages and factsheets; aggregator sites show daily NAV",
       "flow_observed": false,
-      "status": "planned"
+      "status": "planned",
+      "note": "Two funds, not one. Resolved 2026-10-21; nothing pulled."
     },
     {
       "id": "lgt_cat_bond",
