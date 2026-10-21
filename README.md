@@ -248,6 +248,24 @@ so all flow fields are stored as magnitudes with a flag where a sign was
 normalized. Only the quarter-end filing is public, so the monthly series
 arrives in quarterly batches with a 60-day lag.
 
+```bash
+./.venv/bin/python src/build_fund_holdings.py --deals /path/to/deals.csv
+```
+
+The holdings join attributes each fund position to a deal through the same
+combined bridge the deal panel uses, keeps the fund's own mark as a price
+per 100 for debt positions reported in principal amount, aggregates to deal
+and quarter with the share of issued size held, and compares the
+par-weighted fund mark with the TRACE volume-weighted price in a window
+around each quarter end. The two price sources are independent, so their
+agreement is a check on the bridge, the cleaning, and the holdings parse at
+once. Locally the median gap is a quarter of a point across more than two
+thousand CUSIP-quarter pairs. The remaining large gaps are a handful of
+loss-affected bonds where the fund's mark and the last trade disagree about
+how much is left, which is itself a research object. Positions filed with
+an all-zero CUSIP, which are segregated-account cells and quota shares, are
+dropped rather than reported as bridge gaps.
+
 ## Data
 
 **No third-party or licensed data is stored here.** Cloning this will not give
