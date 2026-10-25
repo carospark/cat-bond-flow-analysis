@@ -5,6 +5,42 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Addendum (2026-10-25, afternoon): repository moved out of iCloud
+
+Caro moved this repository from `~/Desktop/cat-bond-flow-analysis` to
+`~/cat-bond-flow-analysis`. The parser stays at `~/Desktop/cat-bond-issuance`,
+so the two are no longer siblings: pass
+`--deals /Users/caropark/Desktop/cat-bond-issuance/data/deals.csv` where the
+README writes `/path/to/deals.csv`, and read the manifest's
+`../cat-bond-issuance/...` as that path.
+
+Checked and done after the move:
+
+- Git intact at 66da5ec on `main`; no iCloud xattrs on the new location;
+  0 evicted files under `.venv/` and `data/raw/` (were 107 and 20).
+- Both LaunchAgents re-installed from the new root with the two install
+  scripts (plists now point at `/Users/caropark/cat-bond-flow-analysis`;
+  launchd run counters reset to 0, stderr target refreshed). No lock
+  directories were carried over.
+- The venv's 14 console scripts, `pyvenv.cfg` and the editable-install
+  record still embedded the Desktop path; rewritten in place
+  (`./.venv/bin/pip` works again). Offline suite at the new path: 108 tests,
+  OK.
+- Daily job kickstarted under launchd from the new root: `start`, both
+  steps `ok`, `finished ok`, exit 0, 13.5 minutes (the Polymarket scan is
+  the slow part), lock released. Freshness check afterwards: all four daily
+  sources at 2026-10-25; the batch rows still STALE at 2026-10-22.
+- Batch job then kickstarted under launchd from the new root and left
+  running: lock pid 79486, run 98 (discovery kalshi hurricane) complete,
+  run 99 running. Stop it with `kill -INT <python pid>` followed by
+  `kill -TERM <runner pid>` if it must not run in the daytime; it resumes
+  from its checkpoints at 03:15.
+- Parser golden suite still runs from the Desktop (2175/2175 in 22 s), but
+  that repository is still iCloud-synced with 185 of 1,320 `raw/` pages and
+  6,008 `.venv/` files evicted; reads materialise them online and fail
+  offline. Moving it the same way is recommended before the offline golden
+  runs are relied on.
+
 ## Checkpoint (2026-10-25): nightly jobs diagnosed, runners made loud, freshness check added
 
 Diagnosis, from `data/*.log`, `launchctl print`, the batch's own `run_log`
