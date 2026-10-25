@@ -1,32 +1,75 @@
 #!/bin/zsh
+# Nightly prediction-market history batch (LaunchAgent
+# org.catbondflow.prediction-history-batch).
+#
+# Everything this script says goes to stdout, which launchd appends to
+# data/prediction-history-batch.stdout.log. The first line is written before
+# anything can fail, so a night with no "start" line never ran at all, and a
+# run that stops writes a "FAILED" line with its exit code and the step it was
+# on instead of exiting silently. launchd's stderr pipe has not been reliable
+# for these jobs (writes to it vanish, and a failed write under `set -e` once
+# aborted the runner before it handled its lock), so stderr is folded into
+# stdout first thing: Python tracebacks land in the same log as the runner's
+# own lines, and every diagnostic print is non-fatal.
 set -eu
+exec 2>&1
+
+JOB="prediction history batch"
+LOCK_HELD=0
+LOCK_DIR=""
+STEP="startup"
+FAILED_STEPS=()
+
+stamp() { date '+%Y-%m-%dT%H:%M:%S%z'; }
+log() { print -r -- "[$(stamp)] $JOB: $*" 2>/dev/null || true; }
+warn() { log "$*"; }
+
+on_exit() {
+  local rc=$?
+  if (( LOCK_HELD )); then rm -rf "$LOCK_DIR" 2>/dev/null || true; fi
+  if (( rc == 0 )); then
+    log "finished ok"
+  elif (( rc == 75 )); then
+    log "skipped: another run holds the lock"
+  else
+    warn "FAILED exit=$rc step=\"$STEP\" failed_steps=${#FAILED_STEPS[@]}${FAILED_STEPS:+ [${(j:, :)FAILED_STEPS}]}"
+  fi
+}
+trap on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+log "start pid=$$ host=$(hostname -s 2>/dev/null || print unknown)"
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PYTHON="$PROJECT_ROOT/.venv/bin/python"
 LOCK_DIR="$PROJECT_ROOT/data/.prediction-history-batch.lock"
 
+STEP="lock"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-  # A lock left behind by a crashed run (for example the EDEADLK aborts that
-  # macOS protected folders produce under launchd) would otherwise block every
-  # later run forever. Treat the lock as stale when its recorded PID is gone.
+  # A lock left behind by a run that died without reaching its EXIT trap
+  # (SIGKILL, shutdown, or the EDEADLK aborts that iCloud-evicted files
+  # produce under launchd) would otherwise block every later run forever.
+  # Treat the lock as stale when its recorded PID is gone.
   OWNER_PID="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
   if [[ -n "$OWNER_PID" ]] && kill -0 "$OWNER_PID" 2>/dev/null; then
-    print -u2 "prediction history batch already running (pid $OWNER_PID)"
+    warn "already running (pid $OWNER_PID)"
     exit 75
   fi
-  print -u2 "removing stale lock left by pid ${OWNER_PID:-unknown}"
+  warn "removing stale lock left by pid ${OWNER_PID:-unknown}"
   rm -rf "$LOCK_DIR"
   if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-    print -u2 "prediction history batch already running"
+    warn "already running (lock re-acquired by another run)"
     exit 75
   fi
 fi
+LOCK_HELD=1
 print $$ > "$LOCK_DIR/pid"
-trap 'rm -rf "$LOCK_DIR"' EXIT INT TERM
 
 cd "$PROJECT_ROOT"
+STEP="environment"
 if [[ ! -x "$PYTHON" ]]; then
-  print -u2 "missing project environment: $PYTHON"
+  warn "missing project environment: $PYTHON"
   exit 1
 fi
 
@@ -46,19 +89,37 @@ CLASSES=(
 
 run_step() {
   # One retry covers transient failures such as a macOS file lock during
-  # import (EDEADLK), which otherwise aborts the whole nightly batch.
-  if ! "$PYTHON" src/backfill_prediction_market_history.py "$@"; then
-    print -u2 "retrying after failure: $*"
-    sleep 30
-    "$PYTHON" src/backfill_prediction_market_history.py "$@"
+  # import (EDEADLK), which otherwise aborts the whole nightly batch. A second
+  # failure is recorded and the loop moves on, so one offline class no longer
+  # costs the remaining classes; the run exits 1 at the end if anything failed.
+  STEP="$1"; shift
+  log "step start: $STEP"
+  if "$PYTHON" src/backfill_prediction_market_history.py "$@"; then
+    log "step ok: $STEP"
+    return 0
+  fi
+  warn "retrying after failure: $STEP"
+  sleep 30
+  if "$PYTHON" src/backfill_prediction_market_history.py "$@"; then
+    log "step ok after retry: $STEP"
+  else
+    local rc=$?
+    warn "step FAILED (exit $rc): $STEP"
+    FAILED_STEPS+=("$STEP")
   fi
 }
 
 for stage in discovery prices trades; do
   for class in "${CLASSES[@]}"; do
     for platform in kalshi polymarket; do
-      run_step --since "$SINCE" --until "$UNTIL" --platform "$platform" \
+      run_step "$stage $platform $class" \
+        --since "$SINCE" --until "$UNTIL" --platform "$platform" \
         --classification "$class" --stage "$stage" --max-contracts "$BATCH_SIZE"
     done
   done
 done
+
+STEP="summary"
+if (( ${#FAILED_STEPS[@]} )); then
+  exit 1
+fi

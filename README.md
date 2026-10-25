@@ -145,14 +145,32 @@ geographies, and windstorm markets only for Europe and Australia, because
 those are the only places the deal directory has the matching exposure. The
 mapping from cat-bond perils to markets is in `docs/SOURCES.md`.
 
-Both LaunchAgents run `/bin/zsh` from `launchd`, which has no access to
-macOS-protected folders (Desktop, Documents, Downloads, iCloud Drive). If the
-project lives in one of those, the jobs fail every night with `can't open
-input file` and exit status 127. Either grant `/bin/zsh` Full Disk Access
-(System Settings > Privacy & Security > Full Disk Access, add `/bin/zsh`
-via Cmd+Shift+G), or keep the project outside a protected folder. Verify with
+Both LaunchAgents run `/bin/zsh` from `launchd`. Each runner writes a
+timestamped `start` line to its stdout log before doing anything else, a line
+per step, and a `FAILED exit=N step="..."` line on any non-zero exit, so a
+night with no `start` line never ran and a night that stopped says where. A
+lock left by a run that died without reaching its exit trap is cleared when
+its recorded PID is gone. Check that the archive is current with
+
+```bash
+./.venv/bin/python scripts/check_snapshot_freshness.py
+```
+
+which prints the last snapshot date per nightly source (and the last completed
+batch run per platform) and exits non-zero when any is more than two days old.
+
+Where the project folder lives matters. If it sits under a macOS-protected
+folder (Desktop, Documents, Downloads) that is also synced by iCloud Drive
+with "Optimize Mac Storage", iCloud evicts files it considers cold, including
+files inside `.venv/`; a `launchd` process that then reads an evicted file
+fails with `OSError: [Errno 11] Resource deadlock avoided` (seen on imports,
+on the certificate bundle, and on log appends) and, in the worst case, with
+`can't open input file` and exit status 127 if the shell cannot read the
+project at all. Keep the project outside those folders, or exclude it from
+iCloud sync, or grant `/bin/zsh` Full Disk Access (System Settings > Privacy &
+Security > Full Disk Access, add `/bin/zsh` via Cmd+Shift+G). Verify with
 `launchctl list | grep catbondflow`: a non-zero last-exit column means the
-job is still failing.
+job is still failing, and the stdout log says at which step.
 
 ## Clean and join
 
