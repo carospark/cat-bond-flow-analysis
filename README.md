@@ -317,15 +317,23 @@ The holdings join attributes each fund position to a deal through the same
 combined bridge the deal panel uses, keeps the fund's own mark as a price
 per 100 for debt positions reported in principal amount, aggregates to deal
 and quarter with the share of issued size held, and compares the
-par-weighted fund mark with the TRACE volume-weighted price in a window
-around each quarter end. The two price sources are independent, so their
-agreement is a check on the bridge, the cleaning, and the holdings parse at
-once. Locally the median gap is a quarter of a point across more than two
-thousand CUSIP-quarter pairs. The remaining large gaps are a handful of
-loss-affected bonds where the fund's mark and the last trade disagree about
-how much is left, which is itself a research object. Positions filed with
-an all-zero CUSIP, which are segregated-account cells and quota shares, are
-dropped rather than reported as bridge gaps.
+par-weighted fund mark with the TRACE volume-weighted price in the window
+before and in the window after each quarter end, separately and together,
+reporting the tails of the gap distribution and the share of pairs whose
+nearest trade is more than a week away. Non-USD par is converted at the
+report month's rate (the parser's tracked ECB/BoE table, `--fx-table`)
+before a mark is taken. The two price sources are independent, so their
+agreement is a check on the cleaning and the holdings parse. It is not a
+check on the bridge, because it is keyed on the CUSIP; a second comparison
+keyed on the deal sets each held CUSIP's mark against the other CUSIPs of
+the same deal in the same quarter (`data/fund_marks_by_deal.csv`), where a
+wrong CUSIP-to-deal link would surface as a tranche that disagrees with its
+siblings. Locally the median gap to TRACE is a quarter of a point across
+more than two thousand CUSIP-quarter pairs. The remaining large gaps, and
+every large within-deal disagreement found so far, are loss-affected bonds
+where tranches genuinely price apart, which is itself a research object.
+Positions filed with an all-zero CUSIP, which are segregated-account cells
+and quota shares, are dropped rather than reported as bridge gaps.
 
 ```bash
 ./.venv/bin/python src/build_etf_flows.py

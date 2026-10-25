@@ -5,6 +5,50 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-10-25, late): mark-versus-TRACE comparison rebuilt, deal-keyed check added
+
+`src/build_fund_holdings.py`:
+
+- Non-USD par is converted at the report month's monthly average rate from
+  the parser's tracked `src/fx_monthly_usd.csv` (`--fx-table`, default
+  `../cat-bond-issuance/src/fx_monthly_usd.csv`) before the mark is taken;
+  `mark_basis` records `usd`, `fx_converted`, `fx_rate_missing` (mark null)
+  or `currency_missing_assumed_usd`. In the archive every marked position is
+  dollar-denominated: 14,505 `usd`, 72 with a blank currency code taken as
+  USD and flagged, none converted, so the comparison's headline numbers do
+  not move (2,398 pairs, median gap 0.24 points, 93.6% within 2, correlation
+  0.967). The defect was latent; the guard is now tested.
+- The 15-day window is split at the quarter end. Before: 1,631 pairs, median
+  0.17, p90 0.92, p95 1.66, p99 10.1, 34 pairs over 5 points, 5 over 20.
+  After: 1,296 pairs, median 0.35, p90 1.86, p95 3.61, p99 9.8, 44 over 5, 6
+  over 20. 529 pairs have trades on both sides. Marks agree better with
+  trades before the quarter end than after it, as a mark set from the last
+  trade should. Both windows together: p90 1.37, p95 2.51, p99 10.07, max
+  52.4; 62 pairs over 5 points, 25 over 10, 9 over 20.
+- Staleness: 45.6% of pairs (1,094) have no trade within 7 days of the
+  quarter end; the median distance to the nearest trade is 7 days. Stale
+  pairs agree about as well as fresh ones (median 0.26 vs 0.22 points), so
+  distance to the last trade is not what drives the tails.
+- `compare_marks_by_deal` keys on the deal: for each held CUSIP its
+  par-weighted fund mark is set against the par-weighted mark of the other
+  CUSIPs of the same deal in the same quarter (`data/fund_marks_by_deal.csv`,
+  3,811 rows over 1,662 deal-quarters with two or more marked CUSIPs; median
+  gap 0.82 points, p95 29.8). The farthest CUSIP per deal-quarter is the
+  candidate (`is_deal_outlier`): 220 CUSIP-quarters on 58 CUSIPs exceed 10
+  points (146 on high-confidence pairs, 72 medium, 2 program; 144 with an
+  agreeing title, 57 with none, 17 split). Every entry at the top of the
+  table is a loss-affected deal whose tranches price apart on purpose:
+  Caelus Re 2018-1 Class A at 93.5 against Class B at 0.26 (2025-04), the
+  Residential Re 2016-1 and 2022-1 Class 10/11 notes near zero against their
+  siblings in the nineties, Caelus Re V 2017-1 Class B, Pelican IV 2021-1
+  Class A at 0.51 against Class B at 87.5. The screen therefore finds no
+  wrong link at the top; a wrong link would show as a disagreement on a deal
+  with no loss history, and the table is sorted so those surface next.
+  Reading below the loss-affected deals is a follow-up for the audit sample.
+- Tests 120 -> 123; four mutations (mark over local par, staleness never
+  set, before and after windows swapped, every CUSIP an outlier) each turned
+  the suite red.
+
 ## Checkpoint (2026-10-25, night): bridge audit counts, high-confidence-only runs, held-out sample
 
 - `bridge_summary.json` now publishes, under `nport_title_evidence`, what the
