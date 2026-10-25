@@ -277,12 +277,19 @@ company browser so multi-series trusts resolve to one fund, checks every
 downloaded XML against the registry's series name, and is resumable. The
 parser writes `fund_flows.csv`, `fund_returns.csv`, and `fund_holdings.csv`
 under `data/processed/nport/` with a summary that reports bridge overlap.
-Two things it handles that the raw filings do not make obvious: Month 3 of
+Three things it handles that the raw filings do not make obvious. Month 3 of
 each filing is the report month (verified against the Brookmont ETF's daily
-NAV), and some filers reported redemptions as negative numbers until 2024,
-so all flow fields are stored as magnitudes with a flag where a sign was
-normalized. Only the quarter-end filing is public, so the monthly series
-arrives in quarterly batches with a 60-day lag. One series the form does
+NAV). Some filers reported redemptions as negative numbers for a stretch
+(Stone Ridge, Pioneer and City National Rochdale, through the January 2024
+report period); the sign is flipped only inside the ranges documented per
+fund in `config/nport_sign_conventions.json`, every raw value is kept in a
+`*_raw` column, and a value whose sign the table does not explain is left
+null and flagged, which also nulls that month's net flow (`net_flow_basis`
+says why; a missing component does the same). Amended filings (NPORT-P/A)
+are archived beside the originals and the latest filed stands for its
+period, with the superseded accessions listed in the summary. Only the
+quarter-end filing is public, so the monthly series arrives in quarterly
+batches with a 60-day lag. One series the form does
 not carry is distributions: total return includes them and net assets lose
 the cash part, so the AUM identity closes only once they are added back.
 They can be backed out as the residual of the identity quarter by quarter,

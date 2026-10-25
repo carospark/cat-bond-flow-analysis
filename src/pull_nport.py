@@ -19,6 +19,11 @@ Single-series registrants are listed by CIK. Every downloaded XML is checked
 against the registry's series name, and a mismatch is recorded rather than
 silently kept.
 
+Amendments (form NPORT-P/A) are archived beside the originals with their form
+recorded in filings.json; the parser, not the puller, decides which filing
+stands for a period (the latest filed). Until 2026-10-25 the listing kept
+only NPORT-P, which left three Pioneer amendments out of the archive.
+
 The pull is resumable: an accession whose XML is already on disk is skipped.
 SEC asks for a User-Agent with contact details and at most ten requests a
 second; this sends one request every 150 ms and backs off on 429 and 503.
@@ -117,7 +122,7 @@ def list_filings(client: EdgarClient, identifier: str) -> list[dict[str, str]]:
     start = 0
     while True:
         page = parse_atom_filings(client.get(BROWSE_URL.format(ident=identifier, start=start)))
-        page = [entry for entry in page if entry["form"] == "NPORT-P"]
+        page = [entry for entry in page if entry["form"] in ("NPORT-P", "NPORT-P/A")]
         filings.extend(page)
         if len(page) < 100:
             break
@@ -219,6 +224,7 @@ def pull_fund(
         xml_path.write_bytes(payload)
         row = {
             "accession": accession,
+            "form": entry["form"],
             "filing_date": entry["filing_date"],
             "period_end": header["period_end"],
             "series_name": header["series_name"],

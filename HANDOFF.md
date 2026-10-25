@@ -5,6 +5,66 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-10-25, evening): N-PORT flow audit
+
+Three defects in `src/parse_nport.py`, fixed and mutation-tested:
+
+- Sign. The parser took the absolute value of every negative flow field. The
+  raw signs of all 396 flow rows in the 132 archived filings were tabulated:
+  Stone Ridge (both funds), Pioneer CAT Bond (predecessor) and City National
+  Rochdale reported redemptions as negatives through the 2024-01-31 report
+  period and positives from 2024-04-30; Pioneer ILS Interval did so only from
+  2022-01-31 to 2024-01-31; Brookmont and Victory Pioneer CAT Bond never.
+  Those five ranges are now `config/nport_sign_conventions.json` (tracked,
+  with the evidence), and the sign is flipped only inside them. Every raw
+  value is kept (`sales_raw`, `reinvestment_raw`, `redemption_raw`). A value
+  the table does not explain is left null and flagged: 4 City National
+  Rochdale months with negative sales (`sign_unexpected_sales`), 6 Stone
+  Ridge months with reinvestment of a few dollars negative
+  (`sign_unexpected_reinvestment`, outside net flow anyway), and one SRRIX
+  month (2023-04-30 filing, month 2) with a $0.28 positive redemption inside
+  the negative range (`redemption_sign_conflict`). 126 rows carry
+  `redemption_sign_flipped` (was 132 `sign_flipped`, which also counted the
+  unexplained negatives it had silently flipped).
+- Missing components. `net_flow` is null when sales or redemption is absent,
+  conflicting or unexplained, and `net_flow_basis` names the reason
+  (`sales_minus_redemption` otherwise). No archived filing lacks an
+  attribute; the five nulls today are the CNR sales and the SRRIX conflict.
+- Amendments. The puller listed only `NPORT-P`, so amendments never reached
+  the archive; it now keeps `NPORT-P/A` too and records `form`. EDGAR holds
+  three for these funds, all archived today: Pioneer ILS Interval 2022-01-31
+  (filed 2022-07-18) and Pioneer CAT Bond 2023-07-31 and 2023-10-31 (both
+  filed 2024-03-12). For each (fund, period) the latest filed accession
+  stands; the others are listed in `superseded_filings` in `summary.json`.
+  All three amendments are identical to their originals in net assets, every
+  flow attribute, every return and the holdings count, so nothing downstream
+  moves; `fund_holdings_by_deal`, the quarterly holdings, the mark-vs-TRACE
+  comparison and the ETF reconciliation were rebuilt and their summaries are
+  unchanged key for key.
+
+Net flow by lineage, 2019-08 to 2026-07, $m, before -> after (lineage from
+the registry's `successor_id`: the Pioneer CAT Bond predecessor rolls into
+Victory Pioneer CAT Bond):
+
+| Lineage | Before | After | Months without net flow |
+|---|---:|---:|---:|
+| Stone Ridge Reinsurance RRP Interval (SRRIX) | -4,049.7 | -4,057.2 | 1 |
+| Stone Ridge High Yield RRP (SHRIX) | +3,324.5 | +3,324.5 | 0 |
+| Victory Pioneer CAT Bond lineage | +2,107.2 | +2,107.2 | 0 |
+| Pioneer ILS Interval (XILSX) | -195.8 | -195.8 | 0 |
+| City National Rochdale Select Strategies | +41.1 | +32.1 | 4 |
+| Brookmont Catastrophic Bond ETF | +76.9 | +76.9 | 0 |
+
+SRRIX moves by the one nulled month (sales of 7.4m that month no longer
+count because its redemption field is unusable); CNR by the four months
+whose negative sales the old code had turned into inflows. The two large
+figures the audit was about, SRRIX and SHRIX, and the Pioneer CAT lineage
+are confirmed to within those nulls. Tests 108 -> 113 (`tests/test_nport.py`
+rewritten for conventions, missing components, conflicts, amendment
+selection and lineages); four mutations (flip every negative, missing as
+zero, conflict as magnitude, every accession kept) each turned the suite
+red.
+
 ## Addendum (2026-10-25, afternoon): repository moved out of iCloud
 
 Caro moved this repository from `~/Desktop/cat-bond-flow-analysis` to

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-10-25",
+  "notes": [
+    "Form N-PORT Part B flow fields (sales, reinvestment, redemption) are magnitudes by definition, but some filers reported redemptions as negative numbers for a period. This table documents, per fund and report-period range, which field was reported with a negative sign, so parse_nport.py flips the sign only there. Every raw value is retained beside the normalised one.",
+    "Evidence: the signs of every flow attribute in the 132 archived filings were tabulated on 2026-10-25 (data/raw/sec_nport/filings). Ranges are inclusive and keyed on the filing's report period end (repPdDate). A non-zero value whose sign contradicts the documented convention is not normalised: the normalised field is left null and the row flagged sign_conflict, which also nulls net_flow.",
+    "Fields with no entry for a fund and period are taken as reported. A negative value there is kept raw, the normalised field is null and the row is flagged sign_unexpected_<field>; four City National Rochdale months report negative sales and six Stone Ridge months report reinvestment of a few dollars negative."
+  ],
+  "conventions": [
+    {"fund_id": "stone_ridge_high_yield_rrp", "field": "redemption", "sign": "negative", "from_period_end": "2019-10-31", "to_period_end": "2024-01-31",
+     "evidence": "Every redemption in the 18 filings through 2024-01-31 is negative; every one from 2024-04-30 is positive."},
+    {"fund_id": "stone_ridge_reinsurance_rrp_interval", "field": "redemption", "sign": "negative", "from_period_end": "2019-10-31", "to_period_end": "2024-01-31",
+     "evidence": "Redemptions are negative or zero in every filing through 2024-01-31 except one $0.28 positive in the 2023-04-30 filing (month 2), and positive or zero from 2024-04-30."},
+    {"fund_id": "pioneer_ils_interval", "field": "redemption", "sign": "negative", "from_period_end": "2022-01-31", "to_period_end": "2024-01-31",
+     "evidence": "Redemptions are positive or zero in the 2019-10-31 to 2021-10-31 filings, negative or zero from 2022-01-31 to 2024-01-31, and positive or zero from 2024-04-30."},
+    {"fund_id": "pioneer_cat_bond_predecessor", "field": "redemption", "sign": "negative", "from_period_end": "2023-04-28", "to_period_end": "2024-01-31",
+     "evidence": "The 2023-01-31 filing reports zero redemptions; 2023-04-28 to 2024-01-31 are negative; 2024-04-30 onward positive."},
+    {"fund_id": "cnr_select_strategies", "field": "redemption", "sign": "negative", "from_period_end": "2019-10-31", "to_period_end": "2024-01-31",
+     "evidence": "Redemptions negative or zero through 2024-01-31, positive or zero from 2024-04-30. Sales are negative in four months (2020-10-31 month 3, 2022-04-30 month 1, 2023-10-31 month 2, 2026-04-30 month 1) with no documented convention; those are left unnormalised and flagged."}
+  ]
+}
