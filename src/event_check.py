@@ -249,6 +249,17 @@ def plot(event: dict, weekly: pd.DataFrame, market_weekly: pd.DataFrame,
     plt.close(fig)
 
 
+def select_trades(trades: pd.DataFrame, include_program: bool, high_confidence_only: bool) -> pd.DataFrame:
+    """Which attributed trades the check runs on. Default: strict pairs at any
+    confidence. --include-program adds program-level rows. --high-confidence-only
+    keeps strict high pairs alone."""
+    if high_confidence_only:
+        return trades[trades["match_confidence"].eq("high")]
+    if not include_program:
+        return trades[trades["match_confidence"].ne("program")]
+    return trades
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--event", choices=sorted(EVENTS), default="ian")
@@ -257,19 +268,25 @@ def main() -> int:
     parser.add_argument("--post-days", type=int, default=60)
     parser.add_argument("--include-program", action="store_true",
                         help="also use trades attributed at program level")
+    parser.add_argument("--high-confidence-only", action="store_true",
+                        help="use only trades on strict-bridge pairs at high confidence; "
+                             "outputs go to <output-dir>/high_confidence")
     parser.add_argument("--trades", type=Path, default=TRADES_PATH)
     parser.add_argument("--hazards", type=Path, default=HAZARD_PATH)
     parser.add_argument("--market", type=Path, default=MARKET_PATH)
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
     args = parser.parse_args()
+    if args.high_confidence_only and args.include_program:
+        parser.error("--high-confidence-only and --include-program are exclusive")
     event = dict(EVENTS[args.event])
     if args.date:
         event["date"] = args.date
+    if args.high_confidence_only:
+        args.output_dir = args.output_dir / "high_confidence"
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     trades = pd.read_csv(args.trades, dtype={"cusip_id": str})
-    if not args.include_program:
-        trades = trades[trades["match_confidence"].ne("program")]
+    trades = select_trades(trades, args.include_program, args.high_confidence_only)
     hazard_map = pd.read_csv(args.hazards)
     market = pd.read_csv(args.market)
 
@@ -281,6 +298,7 @@ def main() -> int:
     summary = {
         "event": event, "pre_days": args.pre_days, "post_days": args.post_days,
         "include_program": args.include_program,
+        "high_confidence_only": args.high_confidence_only,
         "deals_by_group_all": groups.value_counts().to_dict(),
         "deals_with_trades_both_sides_by_group": changes["group"].value_counts().to_dict(),
         "groups": summarise(changes),

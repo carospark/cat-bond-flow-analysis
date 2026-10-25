@@ -361,6 +361,56 @@ def _propagate_title_splits(bridge):
     return bridge
 
 
+def title_evidence_class(method, series_evidence):
+    """What the fund-reported N-PORT titles did to a pair.
+
+    none                        no holder names a series for this CUSIP
+    agrees                      a title names the series the pair already had
+    split                       the title decided between candidates (nport_title_split)
+    capped_not_in_directory     the title names a series the directory lacks; kept at medium
+    series_not_stated           a title exists but the deal states no series to compare
+    propagated                  created by _propagate_title_splits from a split sibling
+    """
+    method = str(method or "")
+    evidence = str(series_evidence or "")
+    if "maturity_group_of_title_split" in method:
+        return "propagated"
+    if "nport_title_split" in method:
+        return "split"
+    if "not in directory" in evidence:
+        return "capped_not_in_directory"
+    if "deal series not stated" in evidence:
+        return "series_not_stated"
+    if "nport_title" in evidence:
+        return "agrees"
+    return "none"
+
+
+def title_evidence_counts(bridge):
+    """The three audit counts, plus the finer classes they are built from.
+
+    `pairs_without_title_evidence` are pairs no title touched or confirmed;
+    `pairs_changed_or_split_by_title` are pairs a title decided (split) or
+    whose confidence it capped; `pairs_created_by_title_propagation` are the
+    siblings carried along by _propagate_title_splits. Only the agreeing
+    pairs are both title-backed and unchanged, and because the same titles
+    feed the bridge that agreement is partly in-sample.
+    """
+    if bridge.empty:
+        classes = {}
+    else:
+        classes = {str(k): int(v) for k, v in bridge.title_evidence.value_counts().items()}
+    get = classes.get
+    return {
+        "pairs_without_title_evidence": get("none", 0),
+        "pairs_changed_or_split_by_title": get("split", 0) + get("capped_not_in_directory", 0),
+        "pairs_created_by_title_propagation": get("propagated", 0),
+        "pairs_title_agrees_unchanged": get("agrees", 0),
+        "pairs_title_series_not_stated": get("series_not_stated", 0),
+        "by_class": classes,
+    }
+
+
 def _norm_series(series):
     """'2024-01' == '2024-1'; a trailing letter is kept; '' when absent."""
     if not series or "-" not in str(series):
@@ -558,6 +608,8 @@ def match_frames(index, securities, title_series=None):
     bridge = pd.DataFrame(selected)
     if not bridge.empty:
         bridge = _propagate_title_splits(bridge)
+        bridge["title_evidence"] = [title_evidence_class(m, e) for m, e in
+                                    zip(bridge.match_method, bridge.series_evidence)]
         bridge = bridge.sort_values(["artemis_date_text", "artemis_issuer_name", "cusip_id"],
                                     kind="stable").reset_index(drop=True)
 
@@ -681,6 +733,7 @@ def build(index_path=INDEX_PATH, trace_path=TRACE_PATH, holdings_path=None):
         "cusips_with_unanimous_title_series": len(title_series),
         "pairs_split_by_title": int(bridge.match_method.str.contains("nport_title_split").sum()) if not bridge.empty else 0,
         "pairs_title_not_in_directory": int(bridge.series_evidence.str.contains("not in directory").sum()) if not bridge.empty else 0,
+        **title_evidence_counts(bridge),
     }
     return bridge, unmatched_artemis, unmatched_trace, summary
 

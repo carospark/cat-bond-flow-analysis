@@ -233,7 +233,20 @@ exposed bonds move and unexposed bonds do not.
 ```bash
 ./.venv/bin/python src/event_check.py --event ian
 ./.venv/bin/python src/event_check.py --event milton --include-program --pre-days 60
+./.venv/bin/python src/event_check.py --event ian --high-confidence-only
 ```
+
+`--high-confidence-only`, on both `event_check.py` and `build_deal_panel.py`,
+restricts to strict-bridge pairs at high confidence (no medium, low or
+program rows) and writes under a `high_confidence/` sub-folder, so every
+result can be shown beside its high-confidence-only version. The bridge
+summary publishes how the N-PORT titles touched the pairs (built without any
+title evidence, changed or split by a title, created by the sibling
+propagation, confirmed unchanged), and `bridge.csv` carries the class per
+pair in `title_evidence`. `src/draw_bridge_audit_sample.py` draws a
+seed-fixed sample of pairs stratified by confidence and issue year, with
+every evidence column and empty verdict columns, for a hand check that is
+independent of the titles feeding the bridge.
 
 Both storms pass. Around Ian the known loss-bearing deals fall by tens of
 points while the diversified exposed deals and the earthquake-only deals

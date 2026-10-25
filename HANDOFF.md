@@ -5,6 +5,43 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-10-25, night): bridge audit counts, high-confidence-only runs, held-out sample
+
+- `bridge_summary.json` now publishes, under `nport_title_evidence`, what the
+  fund-reported titles did to the 1,196 strict pairs, and `bridge.csv`
+  carries the class per pair in a new `title_evidence` column (every other
+  column and the two unmatched tables are byte-identical to the previous
+  build): 630 pairs built without any title evidence (`none`), 58 changed or
+  split by a title (52 `split`, where the title decided between candidates,
+  plus 6 `capped_not_in_directory`, kept at medium because the title names a
+  series the directory lacks), 2 created by `_propagate_title_splits`
+  (`propagated`), 503 confirmed by an agreeing title but not changed, 3 with
+  a title and no deal series to compare. The 503 agreements are partly
+  in-sample because the same titles feed the bridge.
+- `--high-confidence-only` on `build_deal_panel.py` and `event_check.py`
+  keeps strict pairs at high confidence only (no medium, low or program) and
+  writes under `data/high_confidence/` and `data/event_checks/high_confidence/`.
+  Panel: 624 -> 468 deals with trades, 1,028 -> 741 CUSIPs, 67,282 -> 50,608
+  trades attributed (18,151 unattributed), 733 -> 538 bridged deals, 688 ->
+  503 with a hazard map, 48,730 -> 35,740 panel rows (6,323 -> 4,551 with
+  same-class market activity). Event checks, high-confidence only versus
+  strict: Ian exposed 10 deals, median -3.7 points (unchanged); unexposed 10
+  -> 5 deals, median -3.7 -> -4.0; Milton exposed 12 -> 9 deals, median +2.0
+  -> +2.2; unexposed 6 -> 4 deals, median +0.2 -> +0.3. Neither reading
+  changes; the unexposed groups thin out because the earthquake-only deals
+  sit disproportionately at medium confidence.
+- `src/draw_bridge_audit_sample.py` wrote `data/bridge_audit_sample.csv`
+  (gitignored): 40 strict pairs, seed 20261025, all 4 low-confidence pairs,
+  20 high and 16 medium spread over four issue-year buckets in proportion to
+  each stratum (high: 4 to 2012, 3 in 2013-2017, 4 in 2018-2021, 9 from
+  2022; medium: 5, 2, 4, 5). Title evidence in the sample: 20 agrees, 18
+  none, 2 split. Every evidence column is included; `audit_verdict` and
+  `audit_notes` are empty and are Caro's to fill. Not scored here.
+- Tests 113 -> 120 (`tests/test_bridge_audit.py`); five mutations (split
+  classed as agreement, propagated not counted, medium let through the
+  high-confidence filter, event-check flag ignored, sampler seed ignored)
+  each turned the suite red.
+
 ## Checkpoint (2026-10-25, evening): N-PORT flow audit
 
 Three defects in `src/parse_nport.py`, fixed and mutation-tested:

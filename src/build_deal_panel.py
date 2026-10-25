@@ -114,6 +114,16 @@ def map_perils(text: str) -> list[tuple[str, str]]:
     return pairs
 
 
+def high_confidence_only(bridge: pd.DataFrame) -> pd.DataFrame:
+    """Strict pairs at high confidence only: no medium, low or program rows.
+
+    The sensitivity every result should also be run on. Medium pairs include
+    the ticker-inferred names, the title-capped pairs and the siblings that
+    _propagate_title_splits carried along; program rows are membership, not
+    identity."""
+    return bridge[bridge["match_confidence"].eq("high")].reset_index(drop=True)
+
+
 def combine_bridges(bridge: pd.DataFrame, program: pd.DataFrame | None) -> pd.DataFrame:
     """Strict bridge pairs plus the program-level pairs that name one deal.
 
@@ -253,17 +263,22 @@ def main() -> int:
     parser.add_argument("--deals", type=Path, default=DEALS_PATH,
                         help="parsed deal directory with a perils_covered column (optional)")
     parser.add_argument("--database", type=Path, default=DB_PATH)
-    parser.add_argument("--output-dir", type=Path, default=DATA)
+    parser.add_argument("--output-dir", type=Path, default=None,
+                        help="default data/, or data/high_confidence/ with --high-confidence-only")
+    parser.add_argument("--high-confidence-only", action="store_true",
+                        help="use only strict-bridge pairs at high confidence (no medium, low or program rows)")
     args = parser.parse_args()
-    out = args.output_dir
+    out = args.output_dir or (DATA / "high_confidence" if args.high_confidence_only else DATA)
     out.mkdir(parents=True, exist_ok=True)
-    summary: dict = {}
+    summary: dict = {"high_confidence_only": args.high_confidence_only}
 
     trades = pd.read_csv(args.trades, dtype={"cusip_id": str, "msg_seq_nb": str})
     strict = pd.read_csv(args.bridge, dtype={"cusip_id": str})
     program = None
-    if args.program_bridge.exists():
+    if args.program_bridge.exists() and not args.high_confidence_only:
         program = pd.read_csv(args.program_bridge, dtype={"cusip_id": str})
+    if args.high_confidence_only:
+        strict = high_confidence_only(strict)
     bridge = combine_bridges(strict, program)
     deal_daily = aggregate_trades(trades, bridge)
     deal_daily.to_csv(out / "deal_daily_trades.csv", index=False)
