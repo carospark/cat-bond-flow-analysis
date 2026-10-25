@@ -5,6 +5,56 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-10-25, close of day): full regeneration after items 1 to 8
+
+Every summary JSON and all six event checks were regenerated in one chain
+from the committed code (parse_nport, build_bridge, extend_bridge,
+resolve_ties_from_nport, build_deal_panel with and without
+--high-confidence-only, build_fund_holdings, build_etf_flows, event_check for
+Ian and Milton strict, --include-program with a 60-day pre-window into
+event_checks/wide, and --high-confidence-only). No step failed. Each summary
+was compared leaf by leaf with the copy saved before the chain ran. Both test
+suites are green: flow-analysis 127 tests (98 at the start of the day),
+parser 2227 checks (2175 at the start).
+
+Numbers that moved in the flow-analysis summaries, with the cause:
+
+| Summary | Number | Before | After | Cause |
+|---|---|---:|---:|---|
+| deal_panel_summary | market contracts | 6,467 | 10,129 | prediction-market database grew: the nightly batch ran again today (item 1), discovery through 2026-10-25 |
+| deal_panel_summary | market contract-days | 104,300 | 121,141 | same |
+| deal_panel_summary | class-region days | 19,071 | 20,115 | same |
+| deal_panel_summary | market last date | 2026-09-14 | 2026-10-25 | same |
+| deal_panel_summary | panel rows with same-class market activity | 6,323 | 6,326 | same |
+| bridge_nport_summary | strict-bridge title agreement rate | 98.59% | 99.12% | stale output: the file predated the 2026-10-21 Galilei Re fix (18d4a1b); the three Galilei disagreements are gone, five remain (Sierra 2019-1 x2, Bonanza 2022-1, Merna Re II 2024-1 x2) |
+| event_checks/wide (Ian, Milton) | deals by group, all deals | exposed 399, unexposed 162, other-hurricane 94, ambiguous 15 | 405, 164, 103, 16 | stale output: the wide runs predated the 2026-10-21 bridge rebuild (hazard map 634 -> 688 deals); the strict runs were already current |
+| event_checks/wide (Ian) | other-hurricane deals both sides / median | 3 / -8.3 | 4 / -7.1 | same |
+| bridge_program_summary | deals source path | ../cat-bond-issuance/... | /Users/caropark/cat-bond-issuance/... | repositories moved today |
+
+Unchanged, leaf for leaf: bridge_summary (1,196 pairs, 700 deals; the
+title-evidence counts from item 5 were already in the saved copy),
+high_confidence/deal_panel_summary (468 deals, 50,608 trades),
+fund_holdings_summary (2,398 mark pairs, median 0.24; 220 deal-keyed
+outliers), processed/nport/summary (net flow by lineage as in item 4),
+processed/brookmont_ils_etf/summary (6 observations, reconciliation not
+available), the strict event checks (Ian exposed 10 at -3.7 vs unexposed 10
+at -3.7; Milton 12 at +2.0 vs 6 at +0.2) and the high-confidence event
+checks (Ian 10 at -3.7 vs 5 at -4.0; Milton 9 at +2.2 vs 4 at +0.3).
+
+Numbers that moved today in the parser repository are in its HANDOFF.md
+checkpoints: issuance vs publisher +3.80% -> +0.11% signed and 3.96% ->
+0.55% summed absolute (item 2); outstanding vs publisher 2020-2026 from
+-6.1/-5.5/-5.3/-7.4/-6.2/-4.9/-1.7bn to -4.7/-3.3/-2.5/-3.8/-2.2/+0.7/+4.1bn,
+double subtraction alone 2.4 to 4.9bn (item 3); trigger-mix mean absolute
+gap indemnity 3.4 -> 2.0pp.
+
+Left for Caro: the folder move is done; `data/bridge_audit_sample.csv`
+awaits a hand check; the nightly batch is running from the new root and
+`scripts/check_snapshot_freshness.py` will show the two history rows go
+green once it completes a run; the ETF reconciliation becomes possible only
+after the nightly job has run across a month end and the September filing
+is public.
+
 ## Checkpoint (2026-10-25): 663 versus 723 UN-CAT CUSIPs reconciled
 
 No code change. Written to `data/MANIFEST.local.md` ("The 663 versus 723
