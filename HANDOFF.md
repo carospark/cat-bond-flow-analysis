@@ -5,6 +5,21 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-10-25): 663 versus 723 UN-CAT CUSIPs reconciled
+
+No code change. Written to `data/MANIFEST.local.md` ("The 663 versus 723
+UN-CAT count, reconciled 2026-10-25"). Short form: 663 is the strict
+`debt_type_cd = 'UN-CAT'` count (5,236 records) and 723 is the wide ILS
+screen (CAT family plus "Insurance Linked Security" descriptions without a
+CAT code: 5,570 records); the 30 August audit paired the strict record count
+with the wide CUSIP count and the 31 August audit says so and corrects it.
+Both totals reproduce from the archived master file; one sub-statement of
+the corrected audit ("123 CUSIPs" without a code; the file shows 85 on 182
+records, 31 new) does not reproduce and is recorded, not explained. Of the
+60 wide-only securities, 52 are in the strict bridge, 5 in the program
+bridge, 56 traded; the 3 outside everything are not cat bond deals in the
+directory.
+
 ## Checkpoint (2026-10-25, later still): ETF reconciliation made month-aligned
 
 `src/build_etf_flows.py`:
