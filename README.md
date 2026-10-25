@@ -342,11 +342,16 @@ and quota shares, are dropped rather than reported as bridge gaps.
 The ILS ETF is the one fund with a daily, observed flow series. Each
 nightly issuer snapshot records shares outstanding, net assets, and NAV;
 an ETF's shares change only through creations and redemptions, so the
-change in shares times NAV is investor flow. The compiler walks every
-archived snapshot into one series, splits each net-asset change into flow
-and non-flow, and reconciles against the same fund's N-PORT monthly flows
-once a quarter's filing is public. A gap between snapshots is carried as
-one row spanning the gap, not spread over days.
+change in shares times NAV is investor flow. The compiler dates each
+observation by the page's own as-of date (two pulls showing the same date
+are one observation), walks the observations into one series, splits each
+net-asset change into flow and non-flow, and reconciles against the same
+fund's N-PORT monthly flows on the calendar months both sources cover:
+signed error per month against a stated tolerance (one creation unit at
+NAV plus one per cent of the filed flow), or `available: false` with the
+reason when no month is covered by both, as now (filings end June 2026,
+snapshots begin late August 2026). A gap between observations is carried
+as one row spanning the gap, not spread over days.
 
 ```bash
 ./.venv/bin/python src/resolve_ties_from_nport.py

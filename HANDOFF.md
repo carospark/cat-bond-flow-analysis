@@ -5,6 +5,37 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-10-25, later still): ETF reconciliation made month-aligned
+
+`src/build_etf_flows.py`:
+
+- Observations are dated by the page's own `holdings_as_of` where present
+  (`effective_date`, with `effective_date_source` saying which), not by the
+  night of the pull; pulls that show the same as-of date collapse to one
+  observation. All six distinct observations in the archive are dated this
+  way (the 2026-10-24 and 2026-10-25 pulls both show 2026-10-22 and are
+  one), so the series runs 2026-08-27 to 2026-10-22 with a 40-day gap, and
+  the totals do not move: shares 4.75m -> 6.80m, net assets 95.6m -> 137.7m,
+  implied creations $41.5m.
+- `reconcile_with_nport` now aligns on calendar months. A month end is
+  covered by the snapshots when an observation lies within 3 days of it; a
+  month's snapshot flow is the change in shares between two consecutive
+  covered month ends at the ending NAV; the N-PORT side is the fund's
+  `net_flow` for the same month. Per common month it gives the signed error
+  (snapshot minus N-PORT) against a stated tolerance of one creation unit
+  (50,000 shares, the step every snapshot moves in) at NAV plus 1% of the
+  filed flow. With no common month it returns `available: false` and the
+  reason, which is the current state: N-PORT monthly flows run 2025-04-30
+  to 2026-06-30 and no snapshot observation lies within 3 days of a month
+  end (the nearest, 2026-08-27, is four days before August's), so even the
+  September 2026 filing due in late November cannot reconcile a month until
+  the nightly job has been running across a month end. The old function
+  returned `available: true` with a total-against-total comparison over
+  windows that did not overlap.
+- Tests 123 -> 127; four mutations (dated by pull date, month-end tolerance
+  ignored, tolerance band zero, non-consecutive month ends accepted) each
+  turned the suite red.
+
 ## Checkpoint (2026-10-25, late): mark-versus-TRACE comparison rebuilt, deal-keyed check added
 
 `src/build_fund_holdings.py`:
