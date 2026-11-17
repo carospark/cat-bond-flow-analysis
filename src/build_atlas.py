@@ -27,6 +27,8 @@ Outputs under data/atlas/:
   outstanding_by_segment.csv  roll-forward closing stock per year by segment
   fund_flows_by_month.csv   net subscriptions per fund lineage per month, event windows marked
   marks_by_quarter.csv      fund mark versus TRACE gap distribution per quarter
+  comparators_by_year.csv   the published annual comparators in their own units: Guy Carpenter
+                            rate-on-line index, Lane weighted premium and expected loss, Aon issuance
   summary.json              coverage counts for every table
 
 Universe rule (segments are exclusive, applied in this order): mortgage
@@ -65,6 +67,7 @@ OUT_DIR = DATA / "atlas"
 PARSER_ROOT = ROOT.parent / "cat-bond-issuance"
 FUND_FLOWS_PATH = DATA / "processed" / "nport" / "fund_flows.csv"
 MARKS_PATH = DATA / "fund_marks_vs_trace.csv"
+REFERENCE_DIR = DATA / "processed" / "reference_series"
 REGISTRY_PATH = ROOT / "config" / "fund_registry.json"
 
 SEGMENTS = ["core_property_cat", "private_lite", "mortgage", "life_health", "cyber", "other_specialty"]
@@ -367,6 +370,34 @@ def marks_table(marks: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def comparators_table(reference_dir: Path) -> pd.DataFrame:
+    """The published annual series extracted under data/processed/reference_series,
+    merged on year, each column named for its source and unit. They are
+    comparators in their own units, never joined to the parsed tables."""
+    frames = []
+    rol = reference_dir / "guy_carpenter_global_property_cat_rol_index.csv"
+    if rol.exists():
+        r = pd.read_csv(rol)
+        frames.append(r[["year", "rol_index", "digitization_uncertainty_index_points"]].rename(
+            columns={"rol_index": "gc_rol_index_2000_eq_100", "digitization_uncertainty_index_points": "gc_rol_uncertainty_points"}))
+    lane = reference_dir / "lane_annual_nat_cat_ils_pricing.csv"
+    if lane.exists():
+        l = pd.read_csv(lane)
+        frames.append(l[["year", "weighted_premium_pct", "wsst_el_pct", "annual_limit_issued_usd_mn", "tranches"]].rename(
+            columns={"weighted_premium_pct": "lane_weighted_premium_pct", "wsst_el_pct": "lane_weighted_el_pct",
+                     "annual_limit_issued_usd_mn": "lane_limit_issued_usd_m", "tranches": "lane_tranches"}))
+    aon = reference_dir / "aon_property_cat_bond_annual_issuance.csv"
+    if aon.exists():
+        a = pd.read_csv(aon)
+        frames.append(a[["year", "issuance_usd_mn"]].rename(columns={"issuance_usd_mn": "aon_property_cat_issuance_usd_m"}))
+    if not frames:
+        return pd.DataFrame(columns=["year"])
+    out = frames[0]
+    for f in frames[1:]:
+        out = out.merge(f, on="year", how="outer")
+    return out.sort_values("year").reset_index(drop=True)
+
+
 # ---------------------------------------------------------------- build
 
 def load_parser_rollforward(parser_root: Path):
@@ -478,6 +509,10 @@ def build(parser_root: Path = PARSER_ROOT, out_dir: Path = OUT_DIR) -> dict:
                             "pairs_with_trace": int(mt["pairs_with_trace"].sum())}
     else:
         summary["marks"] = {"skipped": "no fund_marks_vs_trace.csv"}
+
+    comparators = comparators_table(REFERENCE_DIR)
+    comparators.to_csv(out_dir / "comparators_by_year.csv", index=False)
+    summary["comparators"] = {c: int(comparators[c].notna().sum()) for c in comparators.columns if c != "year"}
 
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True, default=str) + "\n")
     return summary

@@ -249,6 +249,18 @@ def build_payload() -> tuple[dict, dict]:
                                         "points": [{"x": q, "y": float(v), "n": int(n)} for q, v, n in zip(marks["quarter"], marks["p90_abs_gap"], marks["pairs_with_trace"])]}],
                             "pairs": int(marks["pairs"].sum()), "with_trace": int(marks["pairs_with_trace"].sum()),
                             "table": marks.to_dict(orient="records")}
+    comp = _read("comparators_by_year.csv")
+    if comp is not None and not comp.empty:
+        years = comp["year"].astype(int).astype(str).tolist()
+        def ser(col, label):
+            return {"key": col, "label": label, "points": [{"x": y, "y": (None if pd.isna(v) else float(v))} for y, v in zip(years, comp[col])]} if col in comp.columns else None
+        panels = [p for p in [
+            ("rol", "Guy Carpenter global property-cat rate-on-line index, 2000 = 100", [ser("gc_rol_index_2000_eq_100", "ROL index")]),
+            ("lane", "Lane annual nat-cat ILS pricing, percent of limit", [ser("lane_weighted_premium_pct", "weighted premium %"), ser("lane_weighted_el_pct", "weighted expected loss %")]),
+            ("aon", "Aon property-cat bond annual issuance, USD m", [ser("aon_property_cat_issuance_usd_m", "issuance USD m")]),
+        ] if all(p[2])]
+        payload["comparators"] = {"xs": years, "panels": [{"id": pid, "title": title, "series": series} for pid, title, series in panels],
+                                  "table": comp.to_dict(orient="records")}
     return payload, summary
 
 
@@ -313,6 +325,17 @@ def render(payload: dict, summary: dict) -> str:
         figs.append(_fig("f-marks", "Fund marks versus TRACE by quarter",
                          "Absolute gap in price points between the par-weighted fund mark and the TRACE volume-weighted price around each quarter end",
                          "%d CUSIP-quarter pairs, %d with a TRACE price in the window. Hover shows the pair count behind each point." % (M["pairs"], M["with_trace"])))
+    if "comparators" in payload:
+        C = payload["comparators"]
+        cov = summary.get("comparators", {})
+        inner = "".join(
+            f'<section class="fig" data-panel="{html.escape(p["id"])}"><h2>{html.escape(p["title"])}</h2><div class="legend-host"></div><div class="chart"></div>'
+            f'<p class="coverage">{", ".join("%s: %d years" % (s["label"], cov.get(s["key"], 0)) for s in p["series"])}.</p></section>'
+            for p in C["panels"])
+        figs.append(f'<section class="fig" id="f-comparators"><h2>Published comparators, each in its own units</h2>'
+                    f'<p class="sub">Extracted from the publishers\' charts and tables; shown beside the parsed series, never joined to them</p>'
+                    f'<p class="coverage">The rate-on-line index is a digitised chart with a stated uncertainty of about half an index point; the Lane series are weighted by limit issued over the tranches in each year; Aon counts property-cat bonds on its own scope. Hover shows the values; the table has every column.</p>'
+                    f'<div class="multi">{inner}</div><details><summary>Table</summary><div class="table"></div></details></section>')
     body = "\n".join(figs)
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -332,6 +355,9 @@ def render(payload: dict, summary: dict) -> str:
     table(f.querySelector('.table'),Object.keys(P.layers.table[0]||{{}}),P.layers.table);}}
   if(P.flows){{const f=document.getElementById('f-flows');for(const [name,d] of Object.entries(P.flows.lineages)){{signedBars(f.querySelector(`[data-lineage="${{name}}"] .chart`),d.points,{{width:480,height:200,windows:P.flows.windows}});}}
     table(f.querySelector('.table'),Object.keys(P.flows.table[0]||{{}}),P.flows.table);}}
+  if(P.comparators){{const f=document.getElementById('f-comparators');for(const p of P.comparators.panels){{const host=f.querySelector(`[data-panel="${{p.id}}"]`);
+      lines(host.querySelector('.chart'),P.comparators.xs,p.series,{{width:480,height:220,decimals:1}});if(p.series.length>1)legend(host.querySelector('.legend-host'),p.series.map(s=>s.key),Object.fromEntries(p.series.map(s=>[s.key,s.label])),'line');}}
+    table(f.querySelector('.table'),Object.keys(P.comparators.table[0]||{{}}),P.comparators.table);}}
   if(P.marks){{const f=document.getElementById('f-marks');legend(f.querySelector('.legend-host'),['median_abs_gap','p90_abs_gap'],{{median_abs_gap:'median absolute gap',p90_abs_gap:'90th percentile'}},'line');
     lines(f.querySelector('.chart'),P.marks.xs,P.marks.series,{{decimals:2}});table(f.querySelector('.table'),Object.keys(P.marks.table[0]||{{}}),P.marks.table);}}
 }})();
