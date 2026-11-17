@@ -5,6 +5,76 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-11-17, later): Argon bridge fix, audit worksheet, regeneration
+
+Three things on top of the checkpoint below.
+
+Bridge (`src/build_bridge.py`). The wrong pair the outlier read found is a
+rule gap, now closed: a directory name that carries a sub-programme label
+beside the series ("Matterhorn Re Ltd. (Argon 2022-1)" next to "(Series
+2022-1)") is matched against the holders' title text, and a title naming
+the label ranks the labelled deal above the unlabelled one ahead of the
+month distance (`program_label`, `_label_in_title`, `title_texts` argument
+of `match_frames`, method suffix `+nport_title_label`, summary leaf
+`pairs_decided_by_programme_label`). Fourteen directory names carry such a
+label (Argon, Easton, Lapis, Fuchsia 1/2/3, Titania Re, Vision 2039, Koi
+Re, Vescor; the "Series X & Y" names yield none). Rebuilt: 1,196 pairs
+unchanged in count, 700 -> 701 deals; exactly one pair moved, 577092AR0
+from Matterhorn Re 2022-1 (high) to Matterhorn Re Argon 2022-1 (medium,
+adjacent month); three other pairs (Titania Re 2026-1 x2, Fuchsia 3 2025-1)
+gained the label note in `series_evidence` without moving. Offline tests
+136 -> 141 (`tests/test_bridge_program_label.py`, with the no-title case
+still choosing the closer month and a title without the label leaving the
+series deal). The second wrong pair, 747977AA4 (program bridge, Queen
+Street 2023 Re DAC attributed to Montoya Re 2022-2), is not fixed: it needs
+the N-PORT title checked against the program bridge's nearest-by-date
+candidate, and is flagged by `issuer_prefix_differs` meanwhile.
+
+Audit sample. `src/render_bridge_audit_worksheet.py` writes
+`data/bridge_audit_worksheet.html` (gitignored): one card per sampled pair
+with the Artemis side, the parsed directory row (stated maturity, term,
+scheduled maturity, size, status, tranche sentence from the parser's
+`deals.csv`), the TRACE master row, the holders' N-PORT titles and filed
+maturities with the fund count, a maturity check between TRACE and the
+directory's scheduled month, verdict buttons and notes held in the browser,
+and an export back to the CSV. On the 40 pairs: 16 agree within a month,
+24 are flagged, of which 19 are deals where the parser found no maturity
+or term on the page and 5 are multi-tranche deals where TRACE's class
+matures apart from the deal-level term. 25 of the 40 CUSIPs appear in a
+registered fund's filings. `src/score_bridge_audit.py` reads the filled CSV
+and reports precision by stratum and re-weighted to the bridge's confidence
+mix with Wilson intervals, exit 2 while verdicts are missing. Seven tests.
+
+Regeneration after the bridge fix: extend_bridge, resolve_ties_from_nport,
+build_deal_panel with and without --high-confidence-only,
+build_fund_holdings, and the six event checks, compared leaf by leaf with
+the copies saved before. Moved because of the one pair: strict-bridge
+deals 700 -> 701 and bridged deals 733 -> 734 everywhere; high-confidence
+trades 50,608 -> 50,577 and medium 14,701 -> 14,732 (AR0's 31 trades);
+deal-panel rows 48,730 -> 48,717; fund positions at high 10,211 -> 10,193
+and medium 2,965 -> 2,983; deal-keyed mark outliers 220 -> 219 (the Argon
+CUSIP-quarter), flagged deal-quarters 156 -> 155; program-bridge deals
+with a stated maturity 612 -> 614. Moved because the nightly batch kept
+running: market contracts 10,129 -> 12,093, contract-days 121,141 ->
+132,319, class-region days 20,115 -> 20,718, last date 2026-11-17; panel
+rows with market activity 6,326 -> 6,315; the wide Milton exposed q25
+1.237 -> 1.227. Unchanged: all four strict and high-confidence event
+summaries, the wide Ian summary, `bridge_nport_summary`. The reordering of
+`top_disagreements` entries 10 to 13 in the fund-holdings summary is a tie
+between the two Pelican IV mirror rows, not a change.
+
+Also today: the stale `codex/non-artemis` worktree (34 commits behind,
+nothing ahead, clean) was removed; `data/*.html`, `data/high_confidence/`
+and `.worktrees/` are gitignored; README refreshed (script list, unittest
+discover, label rule, audit tooling, outlier read, ETF state, the parser's
+new dependency on `bridge.csv`). The parser-side items of the day
+(TRACE maturities as a roll-forward tier, the cancelled-status false
+positive) are in the parser's HANDOFF.md checkpoint of the same date.
+
+Left for Caro: the audit worksheet (open `data/bridge_audit_worksheet.html`,
+export, run `score_bridge_audit.py`); the Bloomberg and UCITS terminal
+pulls; the Montoya / Queen Street program-bridge pair.
+
 ## Checkpoint (2026-11-17): ETF month end reached, the 220 mark outliers read
 
 Two of the open items from the 25 October list, both in this repository.

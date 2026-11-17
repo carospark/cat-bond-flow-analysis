@@ -411,6 +411,29 @@ def title_evidence_counts(bridge):
     }
 
 
+def program_label(value):
+    """Tokens of a sub-programme label that precedes the series id inside the
+    parentheses of a directory name: "Matterhorn Re Ltd. (Argon 2022-1)" ->
+    ("ARGON",), "London Bridge 2 PCC Limited (Fuchsia 2 \u2013 2024-1)" ->
+    ("FUCHSIA", "2"). "Series", dashes, ampersands and series ids are not a
+    label; "(Series 2023-1 & 2023-2)" -> ()."""
+    text = _ascii_upper(value)
+    match = re.search(r"\(([^)]*?)\s*(?:19|20)\d{2}-[0-9]+[A-Z]?\)", text)
+    if not match:
+        return ()
+    inner = re.sub(r"\b(?:19|20)\d{2}-[0-9]+[A-Z]?\b", " ", match.group(1))
+    tokens = [t for t in re.findall(r"[A-Z0-9]+", inner) if t not in ("SERIES", "AND")]
+    return tuple(tokens)
+
+
+def _label_in_title(label, title_text):
+    """True when every token of the label is a whole word of the holders' titles."""
+    if not label or not title_text:
+        return False
+    words = set(re.findall(r"[A-Z0-9]+", _ascii_upper(title_text)))
+    return all(token in words for token in label)
+
+
 def _norm_series(series):
     """'2024-01' == '2024-1'; a trailing letter is kept; '' when absent."""
     if not series or "-" not in str(series):
@@ -420,7 +443,7 @@ def _norm_series(series):
     return "%s-%d%s" % (year, int(digits.group(1)), digits.group(2).upper()) if digits else str(series)
 
 
-def match_frames(index, securities, title_series=None):
+def match_frames(index, securities, title_series=None, title_texts=None):
     """Return bridge and diagnostic frames from Artemis and collapsed TRACE.
 
     ``title_series`` maps a CUSIP to the series its holders name in Form
@@ -430,13 +453,22 @@ def match_frames(index, securities, title_series=None):
     month. When the directory has no candidate with that series, the match
     is kept but capped at medium confidence and the disagreement is written
     into the series evidence.
+
+    ``title_texts`` maps a CUSIP to the text of its holders' titles. Where two
+    candidates state the same series and one carries a sub-programme label in
+    its directory name ("Matterhorn Re Ltd. (Argon 2022-1)" beside "(Series
+    2022-1)"), a title naming that label ("Matterhorn Re Argon 2022-1 Class
+    A") ranks the labelled candidate above the unlabelled one, ahead of the
+    month distance.
     """
     title_series = {k: _norm_series(v) for k, v in (title_series or {}).items()}
+    title_texts = dict(title_texts or {})
     art = index.copy().reset_index(drop=True)
     art["artemis_id"] = art.index.astype(int)
     art["issuer_key"] = art.issuer_name.map(lambda x: normalise_issuer(x, "artemis"))
     art["issuer_strict"] = art.issuer_name.map(lambda x: _strict_issuer(x, "artemis"))
     art["series_id"] = art.issuer_name.map(extract_series)
+    art["program_label"] = art.issuer_name.map(program_label)
     art["month_ordinal"] = art.date_text.map(_month_ordinal_from_artemis)
 
     sec = securities.copy().reset_index(drop=True)
@@ -460,6 +492,7 @@ def match_frames(index, securities, title_series=None):
         tr = trace_row._asdict()
         month = tr["month_ordinal"]
         title = title_series.get(tr["cusip_id"], "")
+        title_text = title_texts.get(tr["cusip_id"], "")
         candidates = []
         maturity_rejections = 0
         if month is not None and not pd.isna(month):
@@ -501,10 +534,12 @@ def match_frames(index, securities, title_series=None):
                         title_state = "agrees"
                     else:
                         title_state = "contradicts"
+                label_agrees = _label_in_title(ar["program_label"], title_text)
                 score = (name["rank"], 1 if series_state == "exact_series" else 0,
-                         1 if title_state == "agrees" else 0, -month_distance)
+                         1 if title_state == "agrees" else 0, 1 if label_agrees else 0,
+                         -month_distance)
                 candidates.append((score, name, month_distance, series_state,
-                                   maturity_state, maturity_text, ar, title_state))
+                                   maturity_state, maturity_text, ar, title_state, label_agrees))
 
         # Holders' titles decide between twins only when the directory has the
         # series they name; otherwise the directory is the coarser source and
@@ -544,7 +579,7 @@ def match_frames(index, securities, title_series=None):
             })
             continue
 
-        _, name, distance, series_state, maturity_state, maturity_text, ar, title_state = best[0]
+        _, name, distance, series_state, maturity_state, maturity_text, ar, title_state, label_agrees = best[0]
         confidence = _confidence(name["rank"], distance, series_state, maturity_state)
         name_source = tr.get("issuer_name_source") or "master"
         method = name["method"]
@@ -568,6 +603,10 @@ def match_frames(index, securities, title_series=None):
                 confidence = "medium" if confidence == "high" else confidence
             else:
                 series_evidence += "; nport_title %s, deal series not stated" % title
+        if label_agrees:
+            series_evidence += "; nport_title names programme label '%s'" % " ".join(ar["program_label"])
+            if len(candidates) > 1:
+                method = method + "+nport_title_label"
         date_evidence = ("same issue month" if distance == 0 else
                          "TRACE issue month is adjacent to Artemis month")
         selected.append({
@@ -717,6 +756,16 @@ def load_title_series(holdings_path):
     return title_series_map(Path(holdings_path))
 
 
+def load_title_texts(holdings_path):
+    """CUSIP -> the distinct holder titles joined, for the programme-label check."""
+    if holdings_path is None or not Path(holdings_path).exists():
+        return {}
+    holdings = pd.read_csv(holdings_path, dtype=str, keep_default_na=False, usecols=["cusip", "title"])
+    holdings["cusip"] = holdings["cusip"].str.strip().str.upper()
+    holdings = holdings[holdings["cusip"].ne("") & holdings["title"].str.strip().ne("")]
+    return holdings.groupby("cusip")["title"].agg(lambda s: " | ".join(sorted(set(s)))).to_dict()
+
+
 def build(index_path=INDEX_PATH, trace_path=TRACE_PATH, holdings_path=None):
     index = pd.read_csv(index_path, dtype=str, keep_default_na=False)
     expected = {"issuer_name", "deal_url", "sponsor", "size_text", "date_text"}
@@ -726,13 +775,15 @@ def build(index_path=INDEX_PATH, trace_path=TRACE_PATH, holdings_path=None):
     trace = pd.read_csv(trace_path, dtype=str, keep_default_na=False)
     securities = collapse_trace(trace)
     title_series = load_title_series(holdings_path)
-    bridge, unmatched_artemis, unmatched_trace = match_frames(index, securities, title_series)
+    title_texts = load_title_texts(holdings_path)
+    bridge, unmatched_artemis, unmatched_trace = match_frames(index, securities, title_series, title_texts)
     summary = summarize(index, securities, bridge, unmatched_artemis, unmatched_trace)
     summary["nport_title_evidence"] = {
         "holdings_source": str(holdings_path) if title_series else "none",
         "cusips_with_unanimous_title_series": len(title_series),
         "pairs_split_by_title": int(bridge.match_method.str.contains("nport_title_split").sum()) if not bridge.empty else 0,
         "pairs_title_not_in_directory": int(bridge.series_evidence.str.contains("not in directory").sum()) if not bridge.empty else 0,
+        "pairs_decided_by_programme_label": int(bridge.match_method.str.contains("nport_title_label").sum()) if not bridge.empty else 0,
         **title_evidence_counts(bridge),
     }
     return bridge, unmatched_artemis, unmatched_trace, summary

@@ -45,6 +45,10 @@ attributes another security's trades to a deal.
 ```
 src/build_bridge.py           deal universe -> security identifiers, with evidence
 src/extend_bridge.py          program-level attribution for what the bridge refuses
+src/resolve_ties_from_nport.py  fund-reported titles as evidence for the program bridge
+src/draw_bridge_audit_sample.py  held-out sample of bridge pairs for a hand check
+src/render_bridge_audit_worksheet.py  the sample as a local HTML worksheet
+src/score_bridge_audit.py     precision from the filled sample, weighted to the bridge
 src/pull_tier1_sources.py     archive external reference sources, with checksums
 src/pull_market_signals.py    archive weather-market and disaster snapshots
 src/backfill_prediction_market_history.py  resumable closed-market history
@@ -64,6 +68,7 @@ docs/SOURCES.md               what each source is and why it is used
 docs/MANUAL_DATA_PULLS.md     terminal/form-gated pulls and acceptance checks
 scripts/run_daily_non_artemis_snapshots.sh  daily non-Artemis snapshot runner
 scripts/run_prediction_history_batch.sh  resumable historical batch runner
+scripts/check_snapshot_freshness.py  last snapshot date per nightly source
 tests/                        offline tests
 DATA_POLICY.md                what may never be committed here
 ```
@@ -91,16 +96,13 @@ tools (`pdftotext` and `pdftocairo`).
 
 ```bash
 python3 -m venv .venv && ./.venv/bin/python -m pip install -e .
-./.venv/bin/python -m unittest \
-  tests.test_pull_tier1_sources \
-  tests.test_pull_market_signals \
-  tests.test_backfill_prediction_market_history \
-  tests.test_extract_reference_series -v
+./.venv/bin/python -m unittest discover -s tests
 ```
 
-`tests/test_bridge.py` is a data-backed integration check and needs the local
-deal index plus licensed TRACE/FISD files. Run it only after those gitignored
-inputs are present.
+The offline suite runs without any data. `tests/test_bridge.py` is a
+data-backed integration check and needs the local deal index plus licensed
+TRACE/FISD files; run it as a script only after those gitignored inputs are
+present.
 
 Pull the public non-Artemis snapshots and extract the local broker-series
 validation tables with:
@@ -204,7 +206,11 @@ differ only in tenor are split by the maturity the parsed directory states,
 when both twins state one and the TRACE maturity matches exactly one. It
 never modifies `bridge.csv`. The panel builder joins only the rows that name
 one deal, with match confidence `program`, so any test that needs identity
-rather than program membership can filter them out.
+rather than program membership can filter them out. The bridge is also read
+back by the parser: its roll-forward takes `trace_maturity_date` from
+`bridge.csv` as a maturity tier above the term-derived and imputed dates
+(`--trace-maturities` there), so a bridge rebuild here changes the parser's
+outstanding-principal series.
 
 Both builders also read the fund-reported security titles from the parsed
 N-PORT holdings when `data/processed/nport/fund_holdings.csv` exists.
@@ -213,12 +219,18 @@ bridge a unanimous title decides between candidates that differ only in
 series when the directory has the named series, which is what separates
 adjacent-month twins that share a TRACE issue month; when the directory
 lacks the named series the match stands, capped at medium, with the
-disagreement in the series evidence. In the program bridge a title that
-names exactly one tied deal resolves the tie at level
-`program_nport_title` before the maturity split runs. Locally the title
-evidence split 49 pairs, raised the strict bridge from 677 to 699 deals,
-and cut the same-month ambiguities from 26 deals to 6; the event checks
-are unchanged.
+disagreement in the series evidence. A directory name that carries a
+sub-programme label beside the series ("Matterhorn Re Ltd. (Argon 2022-1)"
+next to "(Series 2022-1)") is matched against the title text as well, so a
+title naming the label ranks the labelled deal above the unlabelled one
+even when the unlabelled one is a month closer; `series_evidence` says
+when a label decided it. In the program bridge a title that names exactly
+one tied deal resolves the tie at level `program_nport_title` before the
+maturity split runs. Locally the title evidence split 49 pairs, raised the
+strict bridge from 677 to 699 deals, and cut the same-month ambiguities
+from 26 deals to 6; the event checks are unchanged. The label rule moved
+one pair (Matterhorn Re Argon 2022-1, found through a fund mark that
+disagreed with its supposed deal-mates).
 
 ## Checking the joins
 
@@ -247,6 +259,13 @@ pair in `title_evidence`. `src/draw_bridge_audit_sample.py` draws a
 seed-fixed sample of pairs stratified by confidence and issue year, with
 every evidence column and empty verdict columns, for a hand check that is
 independent of the titles feeding the bridge.
+`src/render_bridge_audit_worksheet.py` lays the sample out as a local HTML
+page, one card per pair with the Artemis side, the parsed directory row,
+the TRACE master row, the holders' N-PORT titles and maturities, and a
+maturity check between TRACE and the directory; verdicts are kept in the
+browser and exported back to the CSV. `src/score_bridge_audit.py` turns the
+filled CSV into precision by stratum and re-weighted to the bridge's
+confidence mix, with Wilson intervals.
 
 Both storms pass. Around Ian the known loss-bearing deals fall by tens of
 points while the diversified exposed deals and the earthquake-only deals
@@ -328,10 +347,17 @@ check on the bridge, because it is keyed on the CUSIP; a second comparison
 keyed on the deal sets each held CUSIP's mark against the other CUSIPs of
 the same deal in the same quarter (`data/fund_marks_by_deal.csv`), where a
 wrong CUSIP-to-deal link would surface as a tranche that disagrees with its
-siblings. Locally the median gap to TRACE is a quarter of a point across
-more than two thousand CUSIP-quarter pairs. The remaining large gaps, and
-every large within-deal disagreement found so far, are loss-affected bonds
-where tranches genuinely price apart, which is itself a research object.
+siblings; `issuer_prefix_differs` marks a CUSIP whose six-character issuer
+prefix is the minority in its deal-quarter, which is the cheapest sign of a
+foreign security attributed to the deal. Locally the median gap to TRACE is
+a quarter of a point across more than two thousand CUSIP-quarter pairs. The
+220 deal-keyed outliers were read one by one: 190 are one loss-affected
+class in a multi-class deal, 13 are zero-coupon classes issued below par,
+15 are class divergences with no loss record, one is a mark above par, and
+one was a wrong bridge pair, since corrected (the classification is in the
+local manifest). Within-deal disagreement is therefore mostly a research
+object, tranches genuinely pricing apart after a loss, and occasionally a
+bridge check that works.
 Positions filed with an all-zero CUSIP, which are segregated-account cells
 and quota shares, are dropped rather than reported as bridge gaps.
 
@@ -349,9 +375,14 @@ net-asset change into flow and non-flow, and reconciles against the same
 fund's N-PORT monthly flows on the calendar months both sources cover:
 signed error per month against a stated tolerance (one creation unit at
 NAV plus one per cent of the filed flow), or `available: false` with the
-reason when no month is covered by both, as now (filings end June 2026,
-snapshots begin late August 2026). A gap between observations is carried
-as one row spanning the gap, not spread over days.
+reason when no month is covered by both. The summary lists the month ends
+the snapshots cover and the months with both bounds separately. As of
+November 2026 the snapshots run from late August 2026 and cover the
+October month end, so November 2026 is the first full snapshot month; the
+filings end June 2026, so the first month both sources cover arrives with
+the filing for the quarter to December 2026, due in early March 2027. A
+gap between observations is carried as one row spanning the gap, not
+spread over days.
 
 ```bash
 ./.venv/bin/python src/resolve_ties_from_nport.py
