@@ -61,6 +61,8 @@ src/pull_nport.py             archive Form N-PORT filings per fund, with the scr
 src/parse_nport.py            N-PORT filings -> monthly flows, returns, holdings
 src/build_fund_holdings.py    fund holdings joined to deals; fund marks vs TRACE
 src/build_etf_flows.py        daily ETF snapshots -> shares outstanding and flow
+src/build_atlas.py            coverage-aware market atlas tables by segment, peril, layer, year
+src/render_atlas.py           the atlas tables as one local page with coverage beside every chart
 config/tier1_sources.json     the source registry: publisher, title, URL, role
 config/fund_registry.json     funds whose NAV, return, and flow series are pulled
 config/market_signal_sources.json  public API registry for market signals
@@ -398,6 +400,38 @@ with the titles and funds as evidence. It never modifies the bridge
 tables. It also checks every strict-bridge CUSIP whose titles name a
 series against the bridged deal's series and lists the disagreements, which
 is where a wrong match would show up first.
+
+## Market atlas
+
+Phase 2 of the plan is a descriptive atlas of the market, built before any
+hypothesis test, with coverage shown beside every number.
+
+```bash
+./.venv/bin/python src/build_atlas.py      # tables under data/atlas/
+./.venv/bin/python src/render_atlas.py     # data/atlas/atlas.html
+```
+
+The builder first defines the universe: every directory deal goes into one
+segment, in this order, mortgage ILS (peril or programme name), life and
+health, cyber, other specialty lines, private or "lite" placements, and the
+core property-catastrophe market that is left. Mortgage, life and lite
+deals are reported beside the core, never folded into it, and a deal whose
+peril text names both a specialty line and a property peril stays in the
+core with a `mixed_peril` flag. Sponsor type (insurer, reinsurer, public
+sector, corporate, unknown) is a keyword classification of the parsed
+sponsor name. Core perils are mapped to hazard classes with the panel
+builder's lexicon; a deal covering several classes counts in each and has
+its size split equally, and the table says how many were split. Tranches
+are banded by attachment probability (below 1%, 1 to 2, 2 to 4, 4 to 8, 8
+and above, not stated) with the median spread, expected loss and
+price-guidance midpoint per band and year, each with its own count. The
+roll-forward stock per segment comes from the parser's ledger, fund net
+subscriptions per lineage and month from the parsed N-PORT flows with the
+Ian and Milton windows marked, and the mark-versus-TRACE gap per quarter
+from the holdings join. Every table carries the number of deals or
+tranches behind each cell and the share of the year it was computed from;
+the page draws them with a tooltip on every mark and a table under every
+chart. It describes; it does not test.
 
 ## Data
 

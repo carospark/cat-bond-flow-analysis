@@ -104,6 +104,22 @@ among tied mirror rows only. Offline tests 141 -> 145 for this item
 sign handling as implemented; `docs/MANUAL_DATA_PULLS.md` carries the ETF
 reconciliation timing.
 
+Atlas (Phase 2 groundwork, `src/build_atlas.py`, `src/render_atlas.py`,
+`tests/test_build_atlas.py`, 9 tests). Universe rule applied to the 1,311
+directory deals: core property cat 847, private/lite 340, mortgage 62, life
+and health 35, other specialty 16, cyber 11; 6 core deals carry a mixed
+specialty peril. Core deals mapped to a hazard class by the panel builder's
+lexicon 819 of 847 (28 unmapped, "Unknown property catastrophe risks" and
+the like; 448 cover several classes and are split). Sponsor named on 1,049
+deals. Tranches 2,051, attachment probability stated on 802, expected loss
+on 1,036, spread on 519, price guidance on 940. Tables under `data/atlas/`
+(gitignored) and `data/atlas/atlas.html`. The outstanding-by-segment table
+is skipped at the time of writing because the parser's roll-forward raises
+on the current `deals.csv` (a float where a maturity month is expected,
+`deal_book` line "month_index(m) <= month_index(im)"); the parser fork was
+mid-rebuild, and the atlas records the skip in its summary rather than
+failing. Rerun `build_atlas.py` once the parser is green.
+
 Left for Caro: the audit worksheet (open `data/bridge_audit_worksheet.html`,
 export, run `score_bridge_audit.py`); the Bloomberg and UCITS terminal
 pulls.
