@@ -128,3 +128,12 @@ The issuer page currently exposes current NAV and holdings, but its embedded
 historical NAV array stops at 2025-12-31. Fill the gap only from an official
 issuer, administrator, or clearly documented market-data NAV feed. Exchange
 closes are market prices and must remain a separate series.
+
+The nightly snapshot (shares outstanding, net assets, NAV, dated by the
+page's own as-of date) is what `src/build_etf_flows.py` turns into the daily
+creation and redemption series, and it is reconciled against the same
+fund's N-PORT monthly flows only on calendar months both cover. Snapshots
+run from late August 2026 and first cover a month end at 31 October 2026, so
+November 2026 is the first full snapshot month; the N-PORT filing that
+reports it (quarter to 2026-12-31) is due in early March 2027. Until then
+the reconciliation reports `available: false` with the reason.

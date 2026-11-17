@@ -196,10 +196,15 @@ and off-WRDS prediction-market histories remain separate future pulls.
   413,639 rows have a nonblank CUSIP, and there are 62,713 distinct nonblank
   CUSIPs in the full export.
 - `debt_type_cd = 'UN-CAT'` identifies 5,236 master-file rows and 663 distinct
-  nonblank `cusip_id` values in the delivered CSV. The saved access audit says
-  723 distinct CUSIPs for those same 5,236 rows. Until that difference is
-  reproduced from the original query logic, use **663** as the file-backed
-  count and retain 723 only as an unreconciled audit claim.
+  nonblank `cusip_id` values in the delivered CSV. The 723 that the 30 August
+  access audit quoted for "those same rows" is a different screen: the full
+  CAT family plus "Insurance Linked Security" descriptions without a CAT
+  code, 5,570 records and 723 distinct securities, as the 31 August audit
+  states and corrects. Both totals reproduce from the archived master file
+  (reconciled 2026-10-25, local manifest). **663** is the strict UN-CAT count;
+  723 is the wide ILS screen. Of the 60 wide-only securities, 52 are in the
+  strict bridge, 5 in the program bridge, 56 traded, and the 3 outside
+  everything are not cat bond deals in the directory.
 - The `UN-CAT` classification begins in 2021, so it cannot define the historic
   universe by itself. Pre-2021 coverage still requires issuer/program-name
   screening followed by validation against Artemis or another deal list.
@@ -391,7 +396,7 @@ which must be archived immediately and repeatedly.
 
 | Track | Dataset | Canonical source | Frequency / coverage | Access / license | State |
 |---|---|---|---|---|---|
-| Fund flow | Form N-PORT for the registered cat-bond funds in `config/fund_registry.json` | [SEC EDGAR search](https://www.sec.gov/edgar/search-and-access) | Monthly data, public at quarter end (60-day lag); each filing reports the preceding three months | U.S. government filing data; obey SEC rate limits and send a User-Agent with contact | Registry resolved 2026-10-21 from EDGAR full-text search and series lists, all seven SEC entries verified against EDGAR (`src/fund_registry.py --verify`). Part B gives net assets, monthly returns, and shares sold and redeemed, so interval-fund flow is observed rather than inferred; Part C gives holdings with CUSIPs that join to the bridge. Archived 2026-10-21 with `src/pull_nport.py` (132 filings, 2019-10 through 2026-07) and parsed with `src/parse_nport.py`; counts, hashes, and the month-alignment and sign-convention checks are in the local manifest. |
+| Fund flow | Form N-PORT for the registered cat-bond funds in `config/fund_registry.json` | [SEC EDGAR search](https://www.sec.gov/edgar/search-and-access) | Monthly data, public at quarter end (60-day lag); each filing reports the preceding three months | U.S. government filing data; obey SEC rate limits and send a User-Agent with contact | Registry resolved 2026-10-21 from EDGAR full-text search and series lists, all seven SEC entries verified against EDGAR (`src/fund_registry.py --verify`). Part B gives net assets, monthly returns, and shares sold and redeemed, so interval-fund flow is observed rather than inferred; Part C gives holdings with CUSIPs that join to the bridge. Archived 2026-10-21 with `src/pull_nport.py` (132 filings, 2019-10 through 2026-07) and parsed with `src/parse_nport.py`; counts and hashes are in the local manifest. Month 3 of each filing is the report month (checked against the ETF's daily NAV). Some filers reported redemptions as negative numbers for a stretch (Stone Ridge, Pioneer and City National Rochdale, through the January 2024 report period): the sign is flipped only inside the per-fund ranges documented in `config/nport_sign_conventions.json`, every raw value is kept in a `*_raw` column, and a non-zero value whose sign the table does not explain is left null and flagged, which also nulls that month's net flow. Amended filings (NPORT-P/A) are archived beside the originals and the latest filed stands for its period. The quarterly filing cadence means the first calendar month the ETF's daily snapshots and its N-PORT flows both cover is November 2026, available once the filing for the quarter to 2026-12-31 is public (due early March 2027). |
 | Fund flow | Form ADV for ILS managers | [SEC IAPD](https://adviserinfo.sec.gov/) | Annual | Public regulatory filings; SEC terms/rate limits | Planned for holder track. |
 | Fund flow | Artemis ILS manager directory | [Artemis directory](https://www.artemis.bm/ils-fund-managers/) | Current-state snapshot only | Artemis copyright/database rights; local archive only | First snapshot archived 2026-08-30; refresh monthly and submit URLs to the Wayback Machine separately. |
 | Event studies | PCS industry-loss estimates and revision paths | [Verisk PCS](https://www.verisk.com/insurance/products/property-claim-services/) | Event-driven; headline estimates often public, full data paid | Mixed public/paywalled | Planned; capture each estimate with publication date. |
