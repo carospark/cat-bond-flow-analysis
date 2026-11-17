@@ -113,12 +113,21 @@ lexicon 819 of 847 (28 unmapped, "Unknown property catastrophe risks" and
 the like; 448 cover several classes and are split). Sponsor named on 1,049
 deals. Tranches 2,051, attachment probability stated on 802, expected loss
 on 1,036, spread on 519, price guidance on 940. Tables under `data/atlas/`
-(gitignored) and `data/atlas/atlas.html`. The outstanding-by-segment table
-is skipped at the time of writing because the parser's roll-forward raises
-on the current `deals.csv` (a float where a maturity month is expected,
-`deal_book` line "month_index(m) <= month_index(im)"); the parser fork was
-mid-rebuild, and the atlas records the skip in its summary rather than
-failing. Rerun `build_atlas.py` once the parser is green.
+(gitignored) and `data/atlas/atlas.html`. The roll-forward stock by segment
+is built by the parser's own interpreter in a subprocess: this
+repository's pandas (3.0) turns the parser's `None` for a blank maturity
+into NaN and `deal_book` then fails on `month_index`, while the parser's
+pandas (2.3) does not; the atlas records which interpreter built the book.
+Closing stock at 2026-08, USD m: core property cat 64,315, mortgage ILS
+11,166 (carried at face, an upper bound since those notes amortise),
+private/lite 3,695, life and health 1,200, cyber 820, other specialty 367;
+1,298 deals in the ledger, every one with a segment. The published
+comparators (Guy Carpenter rate-on-line index, 27 years; Lane weighted
+premium and expected loss, 23; Aon property-cat issuance, 16) sit in their
+own panels. `data/bridge_cusip_classes.csv` (from
+`resolve_ties_from_nport.py`) lists the class label the N-PORT titles name
+for 588 bridged CUSIPs across 391 deals, none conflicting: the input a
+class-level roll-forward would need for the 55 multi-term deals.
 
 Left for Caro: the audit worksheet (open `data/bridge_audit_worksheet.html`,
 export, run `score_bridge_audit.py`); the Bloomberg and UCITS terminal

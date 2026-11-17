@@ -303,7 +303,7 @@ def render(payload: dict, summary: dict) -> str:
     if "stock" in payload:
         o = summary.get("outstanding", {})
         figs.append(_fig("f-stock", "Outstanding principal by segment, closing stock per year",
-                         "The parser's roll-forward ledger: issued, written down at the loss month, recovered, repaid at maturity; December of each year and the as-of month for the last",
+                         "The parser's roll-forward ledger: issued, written down at the loss month, recovered, repaid at maturity; December of each year and the as-of month for the last. Mortgage ILS amortise and are carried here at face to maturity, so that segment is an upper bound",
                          "Book: %s; %d deals in the ledger, %d of them without a segment. TRACE maturities: %s." % (
                              o.get("book", "n/a"), o.get("book_deals", 0), o.get("book_deals_unknown_segment", 0),
                              "on" if o.get("trace_maturities") else "off")))

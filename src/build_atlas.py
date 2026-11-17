@@ -409,6 +409,47 @@ def load_parser_rollforward(parser_root: Path):
     return roll_forward
 
 
+BOOK_SCRIPT = """
+import json, sys
+sys.path.insert(0, sys.argv[1])
+import roll_forward as rf
+book, _, _ = rf.build(exclude_mortgage=False)
+rows = []
+for r in book.itertuples(index=False):
+    d = r._asdict()
+    d = {k: (None if (v is None or (isinstance(v, float) and v != v)) else v) for k, v in d.items()}
+    d["events"] = {"wd": [[m, float(w)] for m, w in r.events["wd"]], "rec": [[m, float(w)] for m, w in r.events["rec"]]}
+    rows.append(d)
+json.dump({"trace_path": book.attrs.get("trace_path"), "rows": rows}, sys.stdout, default=str)
+"""
+
+
+def parser_book(parser_root: Path) -> tuple[pd.DataFrame | None, str]:
+    """The parser's full deal book (mortgage included), built by the parser's
+    own interpreter so its pandas version applies, returned as a frame the
+    parser's monthly_flows accepts. (The parser's month parser returns None
+    for a blank, which this repository's newer pandas turns into NaN; running
+    the ledger in-process here therefore fails on the first blank maturity.)"""
+    import subprocess
+    python = parser_root / ".venv" / "bin" / "python"
+    if not python.exists():
+        python = Path(sys.executable)
+    try:
+        proc = subprocess.run([str(python), "-c", BOOK_SCRIPT, str(parser_root / "src")],
+                              capture_output=True, text=True, timeout=600, cwd=str(parser_root))
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, "parser roll-forward could not be run: %s" % exc
+    if proc.returncode != 0:
+        return None, "parser roll-forward failed: %s" % proc.stderr.strip().splitlines()[-1:]
+    payload = json.loads(proc.stdout)
+    rows = payload["rows"]
+    for row in rows:
+        row["events"] = {"wd": [(m, w) for m, w in row["events"]["wd"]], "rec": [(m, w) for m, w in row["events"]["rec"]]}
+    book = pd.DataFrame(rows)
+    book.attrs["trace_path"] = payload.get("trace_path")
+    return book, "full book including mortgage ILS, built by %s" % python
+
+
 def build(parser_root: Path = PARSER_ROOT, out_dir: Path = OUT_DIR) -> dict:
     deals = pd.read_csv(parser_root / "data" / "deals.csv", dtype=str, keep_default_na=False)
     tranches = pd.read_csv(parser_root / "data" / "tranches.csv", dtype=str, keep_default_na=False)
@@ -458,18 +499,9 @@ def build(parser_root: Path = PARSER_ROOT, out_dir: Path = OUT_DIR) -> dict:
     }
 
     rf = load_parser_rollforward(parser_root)
+    book, book_note = (None, "")
     if rf is not None:
-        book = None
-        try:
-            book, _, _ = rf.build(exclude_mortgage=False)
-            book_note = "full book including mortgage ILS"
-        except Exception as exc:  # the parser's ledger has only ever run ex-mortgage
-            book_note = "parser roll-forward failed on the full book (%s: %s)" % (type(exc).__name__, exc)
-            try:
-                book, _, _ = rf.build(exclude_mortgage=True)
-                book_note = "mortgage ILS excluded: " + book_note
-            except Exception as exc2:
-                book_note += "; and on the ex-mortgage book (%s: %s)" % (type(exc2).__name__, exc2)
+        book, book_note = parser_book(parser_root)
     if rf is not None and book is not None:
         stock = outstanding_by_segment(book, universe, rf)
         stock.to_csv(out_dir / "outstanding_by_segment.csv", index=False)
