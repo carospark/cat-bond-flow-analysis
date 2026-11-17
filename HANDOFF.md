@@ -129,9 +129,39 @@ own panels. `data/bridge_cusip_classes.csv` (from
 for 588 bridged CUSIPs across 391 deals, none conflicting: the input a
 class-level roll-forward would need for the 55 multi-term deals.
 
+Parser-side, same day, in the parser's HANDOFF.md: maturity recall round
+three (stated maturities 355 -> 375, scheduled 611 -> 763, 9 of the 16
+audit-sample deals without a maturity now have one), the losses table's
+derived amounts corrected (settled realised loss $5.13bn -> $5.63bn,
+returned principal no longer double-counted as a recovery), and the annual
+deal-count validation rerun against the live dashboard (2026 shows 94 in
+the directory against 96 published; the index was crawled 2026-08-29, so a
+re-crawl is the fix, and that is a manual Artemis pull by design).
+
+Suggested replacement for the walkthrough's "What comes next, in order"
+paragraph, for Caro to edit into v8:
+
+> What comes next, in order. The 25 October list is done except for the
+> hand check: on 17 November the TRACE maturities for 700 bridged deals
+> went into the roll-forward (90.8% of issued dollars now repay at a date
+> read from a page or the tape, the outstanding gap to the publisher
+> within a billion in most years from 2019), the deal_status false
+> positive and the losses table's derived amounts were fixed, the 220
+> deal-keyed mark outliers were read (190 loss-affected classes, 13
+> zero-coupon classes, one wrong bridge pair since fixed by a
+> programme-label rule), the program bridge now checks every row against
+> the holders' titles, and the documentation was refreshed. Phase 2 has
+> begun: the atlas universe rule, layer bands and coverage-aware tables
+> exist (`build_atlas.py`, `atlas.html`) with the published comparators
+> beside them. Open now: hand-check the 40-pair bridge audit sample
+> (worksheet ready); re-crawl the directory for the 2026 deals listed
+> since August; decide the loss-timing convention for the roll-forward;
+> then the Bloomberg index export and the UCITS fund sizes. Phase 3 picks
+> two of four tracks as before.
+
 Left for Caro: the audit worksheet (open `data/bridge_audit_worksheet.html`,
-export, run `score_bridge_audit.py`); the Bloomberg and UCITS terminal
-pulls.
+export, run `score_bridge_audit.py`); the directory re-crawl; the
+Bloomberg and UCITS terminal pulls.
 
 ## Checkpoint (2026-11-17): ETF month end reached, the 220 mark outliers read
 
