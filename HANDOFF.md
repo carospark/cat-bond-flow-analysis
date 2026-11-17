@@ -118,10 +118,13 @@ is built by the parser's own interpreter in a subprocess: this
 repository's pandas (3.0) turns the parser's `None` for a blank maturity
 into NaN and `deal_book` then fails on `month_index`, while the parser's
 pandas (2.3) does not; the atlas records which interpreter built the book.
-Closing stock at 2026-08, USD m: core property cat 64,315, mortgage ILS
+Closing stock at 2026-08, USD m, with the parser's class-level repayment
+(night checkpoint in its HANDOFF.md): core property cat 63,440, mortgage ILS
 11,166 (carried at face, an upper bound since those notes amortise),
 private/lite 3,695, life and health 1,200, cyber 820, other specialty 367;
-1,298 deals in the ledger, every one with a segment. The published
+1,298 deals in the ledger, every one with a segment. The book transfer
+carries every key of the ledger's event dict (write-downs, recoveries and
+the class-level repayments), not a fixed list. The published
 comparators (Guy Carpenter rate-on-line index, 27 years; Lane weighted
 premium and expected loss, 23; Aon property-cat issuance, 16) sit in their
 own panels. `data/bridge_cusip_classes.csv` (from
@@ -155,7 +158,8 @@ paragraph, for Caro to edit into v8:
 > exist (`build_atlas.py`, `atlas.html`) with the published comparators
 > beside them. Open now: hand-check the 40-pair bridge audit sample
 > (worksheet ready); re-crawl the directory for the 2026 deals listed
-> since August; decide the loss-timing convention for the roll-forward;
+> since August; decide the loss-timing convention for the roll-forward
+> (both tables are in the parser's handoff, one flag apart);
 > then the Bloomberg index export and the UCITS fund sizes. Phase 3 picks
 > two of four tracks as before.
 

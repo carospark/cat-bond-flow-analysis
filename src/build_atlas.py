@@ -418,7 +418,7 @@ rows = []
 for r in book.itertuples(index=False):
     d = r._asdict()
     d = {k: (None if (v is None or (isinstance(v, float) and v != v)) else v) for k, v in d.items()}
-    d["events"] = {"wd": [[m, float(w)] for m, w in r.events["wd"]], "rec": [[m, float(w)] for m, w in r.events["rec"]]}
+    d["events"] = {k: [[m, float(w)] for m, w in v] for k, v in r.events.items()}
     rows.append(d)
 json.dump({"trace_path": book.attrs.get("trace_path"), "rows": rows}, sys.stdout, default=str)
 """
@@ -444,7 +444,7 @@ def parser_book(parser_root: Path) -> tuple[pd.DataFrame | None, str]:
     payload = json.loads(proc.stdout)
     rows = payload["rows"]
     for row in rows:
-        row["events"] = {"wd": [(m, w) for m, w in row["events"]["wd"]], "rec": [(m, w) for m, w in row["events"]["rec"]]}
+        row["events"] = {k: [(m, w) for m, w in v] for k, v in row["events"].items()}
     book = pd.DataFrame(rows)
     book.attrs["trace_path"] = payload.get("trace_path")
     return book, "full book including mortgage ILS, built by %s" % python
