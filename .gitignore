@@ -43,3 +43,8 @@ notes/
 docs/*.pdf
 docs/*.pptx
 .codex_artifacts/
+
+# Linked git worktrees
+.worktrees/
+data/*.html
+data/high_confidence/
