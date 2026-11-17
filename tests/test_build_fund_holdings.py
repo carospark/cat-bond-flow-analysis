@@ -236,6 +236,32 @@ class MarkComparisonTests(unittest.TestCase):
         self.assertTrue(single.empty)
         self.assertEqual(single_stats["rows"], 0)
 
+    def test_deal_keyed_comparison_flags_a_cusip_from_another_issuer(self):
+        # Three CUSIPs on one deal-quarter: two share the issuing vehicle's prefix,
+        # the third was issued by a different vehicle and is the wrong pair even
+        # though its mark sits within a point of the others.
+        rows = []
+        for cusip, title, value in [("577092AP4", "Matterhorn Re 2022-1 A", 1_000_000.0), ("577092AQ2", "Matterhorn Re 2022-1 B", 1_000_000.0),
+                                    ("747977AA4", "Queen Street 2023 Re DAC", 1_005_000.0)]:
+            row = _holdings().iloc[0].copy()
+            row["cusip"] = cusip; row["title"] = title; row["balance"] = 1_000_000.0; row["value_usd"] = value
+            rows.append(row)
+        bridge = pd.DataFrame([{"cusip_id": c, "deal_url": "https://x/montoya-re-2022-2/", "match_confidence": "program"}
+                               for c in ("577092AP4", "577092AQ2", "747977AA4")])
+        table, stats = compare_marks_by_deal(attribute_holdings(pd.DataFrame(rows), bridge), None, gap_points=10)
+        flagged = table.set_index("cusip")["issuer_prefix_differs"]
+        self.assertEqual(flagged.to_dict(), {"577092AP4": False, "577092AQ2": False, "747977AA4": True})
+        self.assertEqual(stats["rows_over_threshold"], 0)
+        self.assertEqual(stats["issuer_prefix_differs"]["cusip_quarters"], 1)
+        self.assertEqual(stats["issuer_prefix_differs"]["cusips"], 1)
+        self.assertEqual(stats["issuer_prefix_differs"]["pairs"][0]["cusip"], "747977AA4")
+        self.assertEqual(stats["issuer_prefix_differs"]["pairs"][0]["title"], "Queen Street 2023 Re DAC")
+        # Two CUSIPs with different prefixes are a tie: both are flagged, since
+        # the marks alone cannot say which one belongs.
+        pair = pd.DataFrame(rows[1:])
+        table, _ = compare_marks_by_deal(attribute_holdings(pair, bridge), None)
+        self.assertTrue(table["issuer_prefix_differs"].all())
+
     def test_no_overlap_gives_empty_comparison(self):
         attributed = attribute_holdings(_holdings(), _bridge())
         trades = pd.DataFrame({"cusip_id": ["QQQ1"], "trade_date": ["2026-06-30"], "n_trades": [1], "volume": [1.0], "vwap": [100.0]})

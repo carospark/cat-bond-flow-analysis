@@ -326,6 +326,19 @@ def compare_marks_by_deal(attributed: pd.DataFrame, title_evidence: pd.DataFrame
     # One wrong link also pulls the reference away from its true siblings, so
     # the candidate in each deal-quarter is the CUSIP farthest from the rest.
     out["is_deal_outlier"] = out["gap_points"].abs().eq(out.groupby(["deal_url", "period_end"])["gap_points"].transform(lambda s: s.abs().max()))
+    # The first six characters of a CUSIP name the issuing vehicle. A CUSIP whose
+    # issuer prefix differs from its deal-mates was issued by another vehicle: a
+    # bridge pair pointing at a sibling deal shows up here whether or not its
+    # mark disagrees. The minority prefix is flagged; a tie flags every row.
+    out["issuer_prefix"] = out["cusip"].str[:6]
+    by_quarter = out.groupby(["deal_url", "period_end"])
+    n_prefixes = by_quarter["issuer_prefix"].transform("nunique")
+    prefix_rows = out.groupby(["deal_url", "period_end", "issuer_prefix"])["cusip"].transform("size")
+    out["_prefix_rows"] = prefix_rows
+    max_rows = by_quarter["_prefix_rows"].transform("max")
+    min_rows = by_quarter["_prefix_rows"].transform("min")
+    out["issuer_prefix_differs"] = (n_prefixes > 1) & ((prefix_rows < max_rows) | (min_rows == max_rows))
+    out = out.drop(columns=["issuer_prefix", "_prefix_rows"])
     if title_evidence is not None and not title_evidence.empty:
         out = out.merge(title_evidence.rename(columns={"cusip_id": "cusip"})[["cusip", "title_evidence"]].drop_duplicates("cusip"),
                         on="cusip", how="left")
@@ -333,11 +346,22 @@ def compare_marks_by_deal(attributed: pd.DataFrame, title_evidence: pd.DataFrame
         out["title_evidence"] = None
     out = out.drop(columns=["par_x_mark", "deal_par_x_mark"]).sort_values("gap_points", key=lambda s: s.abs(), ascending=False)
     columns = ["deal_url", "period_end", "cusip", "title", "match_confidence", "title_evidence", "n_funds", "funds",
-               "par", "cusip_mark", "n_cusips", "deal_par", "others_mark", "gap_points", "is_deal_outlier"]
+               "par", "cusip_mark", "n_cusips", "deal_par", "others_mark", "gap_points", "is_deal_outlier",
+               "issuer_prefix_differs"]
     out = out[columns].reset_index(drop=True)
     stats: dict[str, Any] = {"gap_threshold_points": gap_points, "rows": int(len(out))}
     if not out.empty:
         gap = out["gap_points"].abs()
+        foreign = out[out["issuer_prefix_differs"]]
+        stats["issuer_prefix_differs"] = {
+            "cusip_quarters": int(len(foreign)),
+            "cusips": int(foreign["cusip"].nunique()),
+            "pairs": [
+                {"deal_url": deal, "cusip": cusip, "title": grp["title"].iloc[0], "match_confidence": grp["match_confidence"].iloc[0],
+                 "quarters": int(grp["period_end"].nunique()), "max_abs_gap_points": round(float(grp["gap_points"].abs().max()), 2)}
+                for (deal, cusip), grp in foreign.groupby(["deal_url", "cusip"], sort=False)
+            ][:20],
+        }
         deal_periods = out.groupby(["deal_url", "period_end"])["gap_points"].apply(lambda s: s.abs().max())
         flagged = out[(gap > gap_points) & out["is_deal_outlier"]]
         stats.update(

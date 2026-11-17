@@ -174,10 +174,14 @@ def reconcile_with_nport(series: pd.DataFrame, nport_flows: pd.DataFrame | None,
     if series.empty:
         return {"available": False, "reason": "no snapshots"}
     monthly = snapshot_monthly_flows(series, tolerance_days)
+    month_ends_covered = month_end_observations(series, tolerance_days)["month_end"].tolist()
     base: dict[str, Any] = {
         "month_end_tolerance_days": tolerance_days,
         "tolerance_rule": "one creation unit (%d shares) at the month-end NAV plus %.0f%% of the N-PORT flow"
                           % (CREATION_UNIT_SHARES, 100 * TOLERANCE_SHARE_OF_FLOW),
+        # A month end is covered when an observation lies within the tolerance of
+        # it; a month's flow needs both of its bounding month ends covered.
+        "snapshot_month_ends_covered": month_ends_covered,
         "snapshot_months_covered": monthly["month_end"].tolist(),
     }
     if nport_flows is None or nport_flows.empty:
@@ -190,9 +194,14 @@ def reconcile_with_nport(series: pd.DataFrame, nport_flows: pd.DataFrame | None,
     base["nport_net_flow_total"] = round(float(fund["net_flow"].sum()), 2) if not fund.empty else None
     common = monthly.merge(fund[["month_end", "sales", "redemption", "net_flow"]], on="month_end", how="inner")
     if common.empty:
-        reason = "no calendar month is covered by both sources: N-PORT monthly flows %s; snapshot month ends covered %s" % (
-            "run %s to %s" % tuple(base["nport_months_covered"]) if base["nport_months_covered"] else "absent",
-            monthly["month_end"].tolist() or "none (no observation within %d days of a month end)" % tolerance_days)
+        if monthly.empty and month_ends_covered:
+            snapshot_side = "month ends with an observation %s but no two consecutive ones, so no monthly flow yet" % month_ends_covered
+        elif monthly.empty:
+            snapshot_side = "none (no observation within %d days of a month end)" % tolerance_days
+        else:
+            snapshot_side = str(monthly["month_end"].tolist())
+        reason = "no calendar month is covered by both sources: N-PORT monthly flows %s; snapshot months covered %s" % (
+            "run %s to %s" % tuple(base["nport_months_covered"]) if base["nport_months_covered"] else "absent", snapshot_side)
         return {"available": False, "reason": reason, **base}
     common["signed_error_usd"] = common["snapshot_flow_usd"] - common["net_flow"]
     common["tolerance_usd"] = CREATION_UNIT_SHARES * common["nav"] + TOLERANCE_SHARE_OF_FLOW * common["net_flow"].abs()

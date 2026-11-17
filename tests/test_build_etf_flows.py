@@ -164,6 +164,20 @@ class ReconciliationTests(unittest.TestCase):
         result = reconcile_with_nport(series, nport)
         self.assertFalse(result["available"])
         self.assertEqual(result["snapshot_months_covered"], ["2026-08-31"])
+        self.assertEqual(result["snapshot_month_ends_covered"], ["2026-07-31", "2026-08-31"])
+
+    def test_one_covered_month_end_is_reported_as_not_yet_a_month(self):
+        # The live case on 2026-11-17: daily pulls since late October cover the
+        # 31 October month end (observation dated 30 October) but September's
+        # last observation was the 10th, so no month has both bounds.
+        series = _series([("2026-08-27", 4_750_000, 20.1, 95e6), ("2026-09-10", 5_000_000, 20.3, 101e6),
+                          ("2026-10-30", 7_800_000, 20.3, 158e6), ("2026-11-13", 8_650_000, 20.3, 175e6)])
+        result = reconcile_with_nport(series, _nport([("2026-05-31", 1.0), ("2026-06-30", 2.0)]))
+        self.assertFalse(result["available"])
+        self.assertEqual(result["snapshot_month_ends_covered"], ["2026-10-31"])
+        self.assertEqual(result["snapshot_months_covered"], [])
+        self.assertIn("no two consecutive ones", result["reason"])
+        self.assertIn("2026-10-31", result["reason"])
 
     def test_no_nport_rows_for_the_fund(self):
         series = _series([("2026-08-30", 4_750_000, 20.1, 95e6)])

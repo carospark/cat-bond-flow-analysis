@@ -5,6 +5,60 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-11-17): ETF month end reached, the 220 mark outliers read
+
+Two of the open items from the 25 October list, both in this repository.
+
+ETF reconciliation (`src/build_etf_flows.py`). The nightly job has run
+across a month end: 19 observations 2026-08-27 to 2026-11-13 (was 6 to
+2026-10-22), shares 4.75m -> 8.65m, implied creations $79.05m (was $41.5m).
+The 31 October month end is covered (observation dated 30 October) but 30
+September is not, so no month has both bounds and the reconciliation is
+still `available: false`. The summary now reports
+`snapshot_month_ends_covered` separately from `snapshot_months_covered`
+and the reason distinguishes "one covered month end" from "none". First
+full snapshot month: November 2026. First month both sources cover: November
+2026, once the N-PORT filing for the quarter to 2026-12-31 is public (due by
+early March 2027); EDGAR still lists five filings, latest period
+2026-06-30. The 2026-11-06 pull is missing because the 2026-11-05 run slept
+and finished at 10:05 on the 6th; both steps logged ok.
+
+Deal-keyed mark outliers (`src/build_fund_holdings.py`). The 220 flagged
+CUSIP-quarters were read against deal-mates, TRACE, the Artemis pages and
+`losses.csv`; the classification table is in `data/MANIFEST.local.md`
+("The 220 deal-keyed mark outliers, read 2026-11-17"). 190 of 220 are one
+loss-affected class in a multi-class deal (90 with a `losses.csv` row, 72
+with the loss on the Artemis page only, 28 with no loss record anywhere);
+13 are zero-coupon discount classes priced below par at issue (Matterhorn
+2020-4 B, Residential Re 2020-II 1 and 2023-II 2, Bonanza 2024-1 A, Hestia
+2026-1 C); 15 are 10-to-28-point class divergences with no loss record; 1 is
+a mark above par; 1 is a wrong bridge pair. No non-USD par, no fund-specific
+pricing beyond one CUSIP-quarter, and TRACE staleness cannot cause a
+mark-versus-mark gap. Two bridge pairs are wrong: 577092AR0 is Matterhorn Re
+Argon 2022-1, not Matterhorn Re 2022-1 (strict, `high`, title "agrees" on
+the series token alone); 747977AA4 is Queen Street 2023 Re DAC, not Montoya
+Re 2022-2 (program bridge, nearest by date). Neither is corrected here.
+`compare_marks_by_deal` gains `issuer_prefix_differs` (a CUSIP whose
+six-character issuer prefix is the minority in its deal-quarter) with the
+pairs listed in `fund_holdings_summary.json`; on the current data it flags
+the Montoya / Queen Street pair and nothing else in 1,662 deal-quarters. The
+Argon case shares its siblings' prefix and needs a program-name check in the
+bridge.
+
+Verification: offline suite 134 -> 136 tests, all passing (134 is what the
+committed tree runs today; the 25 October checkpoint quoted 127 and the
+difference is not traced here). `fund_holdings_summary.json` regenerated: every leaf unchanged apart
+from the new `issuer_prefix_differs` block and the FX table path after the
+repository move. ETF summary leaves that moved are the window, counts and
+totals above plus the new field.
+
+Left for Caro, unchanged: the bridge audit sample; the two wrong pairs above
+are a bridge fix (program-name comparison for strict pairs, N-PORT title
+against the program bridge's candidate) rather than a read; `losses.csv`
+has no row for Caelus Re V 2017-1 and 2018-1, Residential Re 2015-I and
+2016-I, Blue Halo 2016-1, FloodSmart Re 2021-1 and 2023-1, Mystic Re IV
+2025-1, all carrying distressed marks.
+
 ## Checkpoint (2026-10-25, close of day): full regeneration after items 1 to 8
 
 Every summary JSON and all six event checks were regenerated in one chain
@@ -256,7 +310,7 @@ Checked and done after the move:
 - Git intact at 66da5ec on `main`; no iCloud xattrs on the new location;
   0 evicted files under `.venv/` and `data/raw/` (were 107 and 20).
 - Both LaunchAgents re-installed from the new root with the two install
-  scripts (plists now point at `/Users/caropark/cat-bond-flow-analysis`;
+  scripts (plists now point at `/Users/caropark/projects/cat-bond-flow-analysis`;
   launchd run counters reset to 0, stderr target refreshed). No lock
   directories were carried over.
 - The venv's 14 console scripts, `pyvenv.cfg` and the editable-install
