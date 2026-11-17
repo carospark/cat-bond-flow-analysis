@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from resolve_ties_from_nport import (  # noqa: E402
+    class_from_title,
+    classes_by_cusip,
     check_strict_bridge,
     resolve_program_rows,
     series_from_deal_url,
@@ -93,3 +95,29 @@ class ResolutionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ClassLabelTests(unittest.TestCase):
+    def test_class_from_title(self):
+        self.assertEqual(class_from_title("Kilimanjaro III Re 2019-1 Class A-1"), "A-1")
+        self.assertEqual(class_from_title("Merna Re II 2022-2 Class B"), "B")
+        self.assertEqual(class_from_title("Blue Ridge Re 2025-1 Class B 8.25%"), "B")
+        self.assertEqual(class_from_title("FloodSmart Re 2022-1 class c"), "C")
+        self.assertIsNone(class_from_title("Matterhorn Re Ltd"))
+        self.assertIsNone(class_from_title(None))
+
+    def test_classes_by_cusip(self):
+        holdings = pd.DataFrame({
+            "cusip": ["AAA", "AAA", "BBB", "BBB", "CCC", "DDD"],
+            "fund_id": ["f1", "f2", "f1", "f2", "f1", "f1"],
+            "title": ["X Re 2020-1 Class A", "X RE 2020-1 CLASS A", "X Re 2020-1 Class B", "X Re 2020-1 Class C", "X Re Ltd", "Y Re Class A"],
+        })
+        bridged = pd.DataFrame({"cusip_id": ["AAA", "BBB", "CCC"], "deal_url": ["u/x", "u/x", "u/x"], "match_confidence": ["high", "high", "medium"]})
+        out = classes_by_cusip(holdings, bridged).set_index("cusip_id")
+        self.assertEqual(out.loc["AAA", "class_label"], "A")
+        self.assertTrue(out.loc["AAA", "unanimous"])
+        self.assertEqual(out.loc["AAA", "funds"], 2)
+        self.assertEqual(out.loc["BBB", "class_label"], "")
+        self.assertEqual(out.loc["BBB", "classes_named"], "B|C")
+        self.assertNotIn("CCC", out.index)
+        self.assertNotIn("DDD", out.index)

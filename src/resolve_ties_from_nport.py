@@ -15,6 +15,11 @@ This script never modifies bridge.csv or bridge_program.csv. It writes:
     data/bridge_nport_series_check.csv          one row per strict-bridge
         CUSIP whose titles name a series, with whether it matches the
         bridged deal's series
+    data/bridge_cusip_classes.csv               one row per bridged CUSIP
+        (strict or program) whose titles name a class ("Class A-1"),
+        unanimous or conflicting, with the titles as evidence; the class
+        label is what the parser's roll-forward needs to repay a
+        multi-term deal class by class instead of at the majority month
     data/bridge_nport_summary.json
 
 A title has to state the series as a year and number (2019-1); class
@@ -37,6 +42,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 SERIES_IN_TITLE = re.compile(r"\b(20\d\d)\s*-\s*(\d{1,2})\b")
+CLASS_IN_TITLE = re.compile(r"\bclass\s+([A-Z]{1,2}(?:\s*-\s*\d{1,2})?)\b(?!\s*(?:notes?|shares?)\s*of)", re.IGNORECASE)
 # Directory slugs carry the series as "...-series-2019-1/", "...-titania-re-2026-1/",
 # or, for an entry covering two series at once, "...-series-2020-1-2020-2/".
 SERIES_IN_SLUG = re.compile(r"(20\d\d)-(\d{1,2})(?!\d)")
@@ -48,6 +54,38 @@ def series_from_title(title: str | None) -> str | None:
         return None
     match = SERIES_IN_TITLE.search(title)
     return f"{match.group(1)}-{int(match.group(2))}" if match else None
+
+
+def class_from_title(title: str | None) -> str | None:
+    """'Kilimanjaro III Re 2019-1 Class A-1' -> 'A-1'; 'Class B' -> 'B'; None when absent."""
+    if not isinstance(title, str):
+        return None
+    match = CLASS_IN_TITLE.search(title)
+    if not match:
+        return None
+    return re.sub(r"\s*-\s*", "-", match.group(1)).upper()
+
+
+def classes_by_cusip(holdings: pd.DataFrame, bridged: pd.DataFrame) -> pd.DataFrame:
+    """One row per bridged CUSIP whose titles name a class: the labels named,
+    whether they agree, and the titles and fund count as evidence."""
+    rows = holdings[holdings["cusip"].notna()].copy()
+    rows["cusip"] = rows["cusip"].astype(str).str.strip().str.upper()
+    rows["class_label"] = rows["title"].map(class_from_title)
+    rows = rows[rows["class_label"].notna() & rows["cusip"].isin(set(bridged["cusip_id"]))]
+    if rows.empty:
+        return pd.DataFrame(columns=["cusip_id", "deal_url", "match_confidence", "class_label", "classes_named",
+                                     "unanimous", "titles", "funds"])
+    grouped = rows.groupby("cusip").agg(
+        classes_named=("class_label", lambda s: "|".join(sorted(set(s)))),
+        n_classes=("class_label", "nunique"),
+        titles=("title", lambda s: " | ".join(sorted(set(s)))),
+        funds=("fund_id", "nunique"),
+    ).reset_index().rename(columns={"cusip": "cusip_id"})
+    grouped["unanimous"] = grouped["n_classes"].eq(1)
+    grouped["class_label"] = grouped["classes_named"].where(grouped["unanimous"], "")
+    out = grouped.merge(bridged[["cusip_id", "deal_url", "match_confidence"]].drop_duplicates("cusip_id"), on="cusip_id", how="left")
+    return out[["cusip_id", "deal_url", "match_confidence", "class_label", "classes_named", "unanimous", "titles", "funds"]].sort_values(["deal_url", "cusip_id"]).reset_index(drop=True)
 
 
 def series_from_deal_url(url: str | None) -> list[str]:
@@ -167,9 +205,16 @@ def main(argv: list[str] | None = None) -> int:
 
     resolutions = resolve_program_rows(program, titles)
     check = check_strict_bridge(bridge, titles)
+    program_with_deal = program[program["deal_url"].fillna("").astype(str).str.strip().ne("")]
+    bridged = pd.concat([
+        bridge[["cusip_id", "deal_url", "match_confidence"]],
+        program_with_deal[["cusip_id", "deal_url"]].assign(match_confidence="program"),
+    ], ignore_index=True).drop_duplicates("cusip_id")
+    classes = classes_by_cusip(holdings, bridged)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     resolutions.to_csv(args.out_dir / "bridge_program_nport_resolutions.csv", index=False)
     check.to_csv(args.out_dir / "bridge_nport_series_check.csv", index=False)
+    classes.to_csv(args.out_dir / "bridge_cusip_classes.csv", index=False)
 
     decided = check[check["agrees"].notna()]
     summary: dict[str, Any] = {
@@ -181,6 +226,12 @@ def main(argv: list[str] | None = None) -> int:
         "strict_bridge_cusips_checked": int(len(decided)),
         "strict_bridge_agreement_rate": round(float(decided["agrees"].mean()), 4) if len(decided) else None,
         "strict_bridge_disagreements": decided[~decided["agrees"].astype(bool)][["cusip_id", "deal_url", "series_named", "match_confidence", "match_method"]].to_dict("records"),
+        "class_labels": {
+            "bridged_cusips_with_class_in_title": int(len(classes)),
+            "unanimous": int(classes["unanimous"].sum()) if not classes.empty else 0,
+            "conflicting": int((~classes["unanimous"]).sum()) if not classes.empty else 0,
+            "deals_with_a_labelled_cusip": int(classes.loc[classes["unanimous"], "deal_url"].nunique()) if not classes.empty else 0,
+        },
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
     }
     (args.out_dir / "bridge_nport_summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
