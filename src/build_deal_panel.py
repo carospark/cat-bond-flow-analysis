@@ -6,9 +6,10 @@ Joins three local, gitignored inputs:
   cleaned TRACE 144A trade.
 * ``data/bridge.csv`` from ``build_bridge.py``: CUSIP to deal pairs.
 * ``data/bridge_program.csv`` from ``extend_bridge.py``, optional: only its
-  ``program_nearest`` and ``program_maturity_split`` rows carry a deal, and
-  they join with confidence ``program`` so they can be filtered out of any
-  test that needs identity.
+  ``program_nearest``, ``program_maturity_split``, ``program_nport_title``
+  and ``program_nport_title_repointed`` rows carry a deal, and they join
+  with confidence ``program`` so they can be filtered out of any test that
+  needs identity.
 * The parsed deal directory (``deals.csv`` from the companion parser), for
   each deal's covered perils. Pass its path with ``--deals``; it is optional,
   and the peril attachment is skipped when it is absent.
@@ -57,7 +58,8 @@ TRADES_PATH = DATA / "trace_trades_clean.csv"
 BRIDGE_PATH = DATA / "bridge.csv"
 PROGRAM_BRIDGE_PATH = DATA / "bridge_program.csv"
 ATTRIBUTION_COLUMNS = ["cusip_id", "deal_url", "match_confidence"]
-PROGRAM_LEVELS_WITH_DEAL = {"program_nearest", "program_maturity_split", "program_nport_title"}
+PROGRAM_LEVELS_WITH_DEAL = {"program_nearest", "program_maturity_split", "program_nport_title",
+                            "program_nport_title_repointed"}
 DEALS_PATH = DATA / "deals.csv"
 DB_PATH = DATA / "raw" / "tier1" / "prediction_market_history.sqlite3"
 

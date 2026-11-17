@@ -182,3 +182,91 @@ class MaturitySplitTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TitleCheckTests(unittest.TestCase):
+    """Holders' titles re-point, resolve, confirm or flag program rows."""
+
+    INDEX = pd.DataFrame([
+        deal("Montoya Re Ltd. (Series 2022-2)", "Dec 2022", "montoya-re-ltd-series-2022-2"),
+        deal("Queen Street 2023 Re dac", "May 2023", "queen-street-2023-re-dac"),
+        deal("Merna Reinsurance II Ltd.", "Apr 2013", "merna-reinsurance-ii-ltd"),
+        deal("Merna Re II Ltd. (Series 2022-2)", "Jun 2022", "merna-re-ii-ltd-series-2022-2"),
+        deal("Merna Re II Ltd. (Series 2022-3)", "Jun 2022", "merna-re-ii-ltd-series-2022-3"),
+        deal("Acorn Re Ltd. (Series 2021-1)", "Jun 2021", "acorn-re-ltd-series-2021-1"),
+        deal("Acorn Re Ltd. (Series 2023-1)", "Jun 2023", "acorn-re-ltd-series-2023-1"),
+    ])
+
+    @staticmethod
+    def row(cusip, level, issue, slug="", tied=()):
+        return {"cusip_id": cusip, "level": level, "trace_issue_date": issue,
+                "deal_url": "https://example.invalid/" + slug if slug else "",
+                "tied_deal_urls": "|".join("https://example.invalid/" + s for s in tied),
+                "artemis_issuer_name": "", "artemis_date_text": "", "month_distance": ""}
+
+    def test_title_issuer_key(self):
+        from extend_bridge import title_issuer_key
+        self.assertEqual(title_issuer_key("Queen Street 2023 Re DAC"), ("QUEEN STREET 2023 RE", ""))
+        self.assertEqual(title_issuer_key("Kilimanjaro III Re 2019-1 Class A-1"), ("KILIMANJARO III RE", "2019-1"))
+        self.assertEqual(title_issuer_key("Residential Re 2024-II Class 2")[0], "RESIDENTIAL RE")
+        self.assertEqual(title_issuer_key("CAPE LOOKOUT RE LTD REGD V/R 144A P/P SER A 3.26520900")[0], "CAPE LOOKOUT RE")
+
+    def test_repoint_resolve_confirm_and_flag(self):
+        from extend_bridge import check_titles
+        result = pd.DataFrame([
+            self.row("747977AA4", "program_nearest", "2023-05-11", "montoya-re-ltd-series-2022-2"),
+            self.row("59013MAG7", "program_tied", "2022-06-07",
+                     tied=("merna-re-ii-ltd-series-2022-2", "merna-re-ii-ltd-series-2022-3")),
+            self.row("00485YAD1", "program_nearest", "2023-06-15", "acorn-re-ltd-series-2023-1"),
+            self.row("00485YAE9", "program_nearest", "2023-06-15", "acorn-re-ltd-series-2023-1"),
+            self.row("27954GAB9", "program_absent", "2019-01-10"),
+            self.row("27954GAC7", "program_nearest", "2019-01-10", "acorn-re-ltd-series-2021-1"),
+            self.row("00000AAZ9", "program_nearest", "2021-06-01", "acorn-re-ltd-series-2021-1"),
+        ])
+        titles = {
+            "747977AA4": ["Queen Street 2023 RE DAC", "Queen Street 2023 Re DAC"],
+            "59013MAG7": ["Merna Reinsurance II Ltd"],
+            "00485YAD1": ["ACORN RE LTD", "Acorn Re 2023-1 Class A"],
+            "00485YAE9": ["Acorn Re 2021-1 Class A"],
+            "27954GAB9": ["Eden Re II"],
+            "27954GAC7": ["Eden Re II"],
+        }
+        out = check_titles(result, self.INDEX, titles, max_months=3).set_index("cusip_id")
+        # same issue month as the named deal, different issuer entity: re-pointed
+        self.assertEqual(out.loc["747977AA4", "level"], "program_nport_title_repointed")
+        self.assertTrue(out.loc["747977AA4", "deal_url"].endswith("queen-street-2023-re-dac"))
+        self.assertEqual(out.loc["747977AA4", "artemis_date_text"], "May 2023")
+        self.assertIn("was program_nearest montoya-re-ltd-series-2022-2", out.loc["747977AA4", "title_evidence"])
+        self.assertEqual(out.loc["747977AA4", "title_conflict"], "")
+        # a tie whose titles name a deal nine years away: kept tied, flagged
+        self.assertEqual(out.loc["59013MAG7", "level"], "program_tied")
+        self.assertEqual(out.loc["59013MAG7", "title_conflict"], "title_names_deal_outside_date_window")
+        # one title names the series, one only the issuer: intersection confirms
+        self.assertEqual(out.loc["00485YAD1", "level"], "program_nearest")
+        self.assertIn("confirms acorn-re-ltd-series-2023-1", out.loc["00485YAD1", "title_evidence"])
+        # title names the sibling series two years earlier: outside window, flagged not moved
+        self.assertEqual(out.loc["00485YAE9", "level"], "program_nearest")
+        self.assertEqual(out.loc["00485YAE9", "title_conflict"], "title_names_deal_outside_date_window")
+        # issuer absent from the directory: absent row just annotated, attached row flagged
+        self.assertIn("not in directory", out.loc["27954GAB9", "title_evidence"])
+        self.assertEqual(out.loc["27954GAB9", "title_conflict"], "")
+        self.assertEqual(out.loc["27954GAC7", "title_conflict"], "title_issuer_not_in_directory")
+        self.assertEqual(out.loc["27954GAC7", "level"], "program_nearest")
+        # no titles: untouched
+        self.assertEqual(out.loc["00000AAZ9", "title_evidence"], "")
+
+    def test_tie_resolved_by_issuer_only_title_within_window(self):
+        from extend_bridge import check_titles
+        index = pd.concat([self.INDEX, pd.DataFrame([deal("Lion Re Ltd.", "Jun 2022", "lion-re-ltd")])])
+        result = pd.DataFrame([self.row("00000AAY1", "program_tied", "2022-06-10",
+                                        tied=("lion-re-ltd", "merna-re-ii-ltd-series-2022-2"))])
+        out = check_titles(result, index, {"00000AAY1": ["Lion Re Ltd Class A"]}).set_index("cusip_id")
+        self.assertEqual(out.loc["00000AAY1", "level"], "program_nport_title")
+        self.assertTrue(out.loc["00000AAY1", "deal_url"].endswith("lion-re-ltd"))
+
+    def test_no_titles_leaves_frame_unchanged(self):
+        from extend_bridge import check_titles
+        result = pd.DataFrame([self.row("00000AAX3", "program_nearest", "2023-05-11", "montoya-re-ltd-series-2022-2")])
+        out = check_titles(result, self.INDEX, {})
+        self.assertEqual(out.loc[0, "level"], "program_nearest")
+        self.assertIn("title_conflict", out.columns)

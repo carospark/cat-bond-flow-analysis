@@ -71,9 +71,42 @@ new dependency on `bridge.csv`). The parser-side items of the day
 (TRACE maturities as a roll-forward tier, the cancelled-status false
 positive) are in the parser's HANDOFF.md checkpoint of the same date.
 
+Program bridge, holders' titles on every row (`src/extend_bridge.py`,
+later the same day). `check_titles` resolves each CUSIP's N-PORT titles to
+directory deals with the strict bridge's own normalisation
+(`title_issuer_key` cuts the title before its class, series, tranche or
+coupon suffix, then `normalise_issuer` and `extract_series`); the titles
+agree when the intersection of their deal sets is one deal, and a row moves
+only on agreement plus a TRACE issue month within `--title-max-months`
+(default 3) of that deal's directory month. Outcomes on the 65 program
+CUSIPs with titles: 1 re-pointed (747977AA4, "Queen Street 2023 Re DAC",
+TRACE issue 2023-05-11, directory May 2023; was `program_nearest` Montoya
+Re 2022-2 at 5 months; new level `program_nport_title_repointed`), 11
+confirmed, 4 flagged `title_names_deal_outside_date_window` and kept
+(three Residential Re 2024-2 notes whose TRACE-style title names the 2004
+vehicle 246 months away, and the Merna Re II 2022 tie whose title names
+the 2010 Merna Reinsurance II deal 146 months away), none naming an issuer
+the directory lacks while attached to a deal. `title_conflict` is a new
+column; `bridge_program_summary.json` gains `nport_title_check`.
+`PROGRAM_LEVELS_WITH_DEAL` in `build_deal_panel.py` accepts the new level,
+so the re-pointed CUSIP joins. `bridge.csv` untouched (checksum compared).
+Regenerated and diffed: program levels nearest 92 -> 91 plus 1 re-pointed;
+deal panel deals 625 -> 626, hazard-mapped deals 688 -> 689 (Queen Street
+2023 is a US hurricane deal), panel rows 48,717 -> 48,687 (the CUSIP's
+trades now sit on a deal with no other CUSIP-days); fund holdings deals
+734 -> 735 and 470 -> 471 with a holding, `issuer_prefix_differs` 2 CUSIPs
+/ 20 CUSIP-quarters -> 0, mark-versus-deal rows 3,799 -> 3,779 (the 10
+Queen Street quarters no longer have deal-mates) and p95 gap 29.86 ->
+30.17; the high-confidence panel unchanged; `top_disagreements` reordered
+among tied mirror rows only. Offline tests 141 -> 145 for this item
+(`tests/test_extend_bridge.py` TitleCheckTests, plus the panel level test).
+`docs/SOURCES.md` now states the 663 / 723 reconciliation and the N-PORT
+sign handling as implemented; `docs/MANUAL_DATA_PULLS.md` carries the ETF
+reconciliation timing.
+
 Left for Caro: the audit worksheet (open `data/bridge_audit_worksheet.html`,
 export, run `score_bridge_audit.py`); the Bloomberg and UCITS terminal
-pulls; the Montoya / Queen Street program-bridge pair.
+pulls.
 
 ## Checkpoint (2026-11-17): ETF month end reached, the 220 mark outliers read
 
