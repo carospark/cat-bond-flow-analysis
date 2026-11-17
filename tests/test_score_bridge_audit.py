@@ -9,7 +9,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from render_bridge_audit_worksheet import render  # noqa: E402
+from render_bridge_audit_worksheet import attach_sources, render, tenor_check  # noqa: E402
 from score_bridge_audit import format_report, score, wilson  # noqa: E402
 
 
@@ -66,6 +66,33 @@ class ScoreTests(unittest.TestCase):
         text = format_report(score(_sample()))
         self.assertIn("1 pairs have no verdict yet", text)
         self.assertIn("high:2022_on", text)
+
+
+class SourceJoinTests(unittest.TestCase):
+    def test_attach_and_tenor_check(self):
+        sample = _sample()
+        sample["trace_issue_date"] = ["2022-01-10", "2022-01-10", "2010-06-01", "", "2009-01-01", "2009-01-01"]
+        sample["trace_maturity_date"] = ["2025-01-08", "2025-06-08", "2013-06-01", "2013-01-01", "2012-01-01", "2012-01-01"]
+        deals = pd.DataFrame({"deal_url": ["https://example.test/a"], "maturity_scheduled": ["January 2025"],
+                              "maturity_date": ["January 2025"], "term_length": [""], "size": ["$100m"],
+                              "date_of_issue": ["Jan 2022"], "deal_status": [""], "tranche_structure": ["one tranche"]})
+        holdings = pd.DataFrame({"cusip": ["000000AA0", "000000AA0", "000000AB8"], "fund_id": ["f1", "f2", "f1"],
+                                 "title": ["A Re 2022-1 Class A", "A RE LTD", "B Re"], "maturity_date": ["2025-01-08", "2025-01-08", ""]})
+        out = attach_sources(sample, deals, holdings)
+        self.assertEqual(out.loc[0, "dir_maturity_scheduled"], "January 2025")
+        self.assertEqual(out.loc[0, "nport_titles"], "A RE LTD | A Re 2022-1 Class A")
+        self.assertEqual(out.loc[0, "nport_funds"], "2 funds, 2 filing rows")
+        self.assertIn("no registered fund", out.loc[2, "nport_titles"])
+        text, warn = tenor_check(out.loc[0])
+        self.assertFalse(warn)
+        self.assertIn("agrees", text)
+        text, warn = tenor_check(out.loc[1])
+        self.assertTrue(warn)
+        self.assertIn("+5 months", text)
+        self.assertTrue(tenor_check(out.loc[3])[1])
+        page = render(out)
+        self.assertIn("Maturity check", page)
+        self.assertNotIn("dir_maturity_scheduled", page.split("<main>")[1].split("</main>")[0].replace('"dir_maturity_scheduled"', ""))
 
 
 class WorksheetTests(unittest.TestCase):
