@@ -48,3 +48,4 @@ docs/*.pptx
 .worktrees/
 data/*.html
 data/high_confidence/
+data/atlas/
