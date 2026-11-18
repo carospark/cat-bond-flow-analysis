@@ -427,7 +427,10 @@ table says how many were split; text that only says multi-peril is its
 own class. The rows a hand review should look at (corporate or unknown
 sponsors, core deals with no or only an unspecified hazard class) are
 written to `data/atlas/review_*.csv`. The conventions, weights and
-annualisation behind every table are in `docs/ATLAS_METHODS.md`. Tranches
+annualisation behind every table are in `docs/ATLAS_METHODS.md`; the
+method decisions taken on them in `docs/DECISIONS.md`; the substitution
+pre-registration, to be fixed before the atlas is read for it, in
+`docs/PREREGISTRATION.md`. Tranches
 are banded twice with the same edges (below 1%, 1 to 2, 2 to 4, 4 to 8, 8
 and above, not stated): by expected loss, the primary pricing view, and
 by attachment probability, the layer view, which the pages state only

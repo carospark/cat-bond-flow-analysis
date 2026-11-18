@@ -25,6 +25,23 @@ the caption; `universe_deals.csv` carries `generic_peril` (core deals with
 no hazard class or only `multi_peril_unspecified`, 15). Methods page and
 README updated. Suite 157, atlas 11 figures, page script compiles.
 
+## Checkpoint (2026-11-18, evening): the five Phase 2 decisions taken; pre-registration drafted
+
+Caro accepted the five method decisions as recommended after two reviews:
+expected loss as the primary pricing view with attachment probability as
+the layer view from 2022 on; the six-segment universe with mixed and
+generic perils flagged and private/lite beside the core; band edges 1, 2,
+4, 8 percent for both metrics with a continuous expected-loss adjustment
+where the sample allows; loss month as the default timing with settlement
+as a sensitivity once the remainder-repay rule is fixed; the equal peril
+split kept as an allocation and never used for sample selection. Phase 3
+tracks: the hurricane event study (starting from the gate) and fund flow
+plus substitution by layer. Recorded in `docs/DECISIONS.md`.
+`docs/PREREGISTRATION.md` is a draft of the substitution pre-registration
+with the bracketed choices left for Caro: overlap and comparison group
+definitions, cycle dates, renewal windows, flow lag, minimum cell size.
+Nothing in it has been run.
+
 ## Checkpoint (2026-11-18, afternoon, later): hurricane event-study gate
 
 Hurricane event-study gate (`src/event_gate.py`, `tests/test_event_gate.py`,
