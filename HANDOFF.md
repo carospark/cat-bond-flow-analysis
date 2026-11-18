@@ -37,10 +37,23 @@ as a sensitivity once the remainder-repay rule is fixed; the equal peril
 split kept as an allocation and never used for sample selection. Phase 3
 tracks: the hurricane event study (starting from the gate) and fund flow
 plus substitution by layer. Recorded in `docs/DECISIONS.md`.
-`docs/PREREGISTRATION.md` is a draft of the substitution pre-registration
-with the bracketed choices left for Caro: overlap and comparison group
-definitions, cycle dates, renewal windows, flow lag, minimum cell size.
-Nothing in it has been run.
+`docs/PREREGISTRATION.md` is the substitution pre-registration with every
+choice filled from the data (overlap: indemnity US hurricane at 2% to 8%
+attachment from 2023; comparison: index- and parametric-trigger US
+hurricane; cycle step 2023, peak 2024, softening 2025 to 2026; cells
+under ten tranches inconclusive) and awaiting sign-off.
+`docs/LITERATURE.md` (30 entries, verification marked per entry) feeds
+its section 6: nothing constructs the layer-overlap treatment or uses
+registered-fund subscriptions as demand; the rate-on-line index as a
+cycle regressor, spread minus EL as the price, and hard-market
+substitution at the cedent level are already in print; sponsor fixed
+effects, an issue-month control and an EL-by-cycle interaction were added
+to section 5 in response. Nothing in it has been run. The walkthrough is
+at v8 (`docs/Cat bond project walkthrough v8.docx`, untracked like the
+others; orange text marks the changes: sections 5.5, 8, 9 and 11), built
+from v7 by paragraph replacement and validated against the schema; not
+rendered to PDF here (no LibreOffice on this machine). The two status
+pages under docs/ (gitignored HTML) are refreshed to the same state.
 
 ## Checkpoint (2026-11-18, afternoon, later): hurricane event-study gate
 
