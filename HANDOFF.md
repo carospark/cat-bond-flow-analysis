@@ -25,6 +25,46 @@ the caption; `universe_deals.csv` carries `generic_peril` (core deals with
 no hazard class or only `multi_peril_unspecified`, 15). Methods page and
 README updated. Suite 157, atlas 11 figures, page script compiles.
 
+## Checkpoint (2026-11-18, afternoon, later): hurricane event-study gate
+
+Hurricane event-study gate (`src/event_gate.py`, `tests/test_event_gate.py`,
+5 tests; outputs `data/event_gate/gate_{ian,milton}.csv`, `summary.json`,
+gitignored). The first gate of the Phase 3 hurricane track, counted, not
+tested: deals Florida-exposed per the panel's hazard map (`classify_deals`
+group `exposed`, 406) -> alive at the event by the strict bridge's TRACE
+issue and maturity dates -> strict-bridge CUSIP (any confidence / high) ->
+usable prices on both sides of the event by the event check's own rule (a
+trade day with a VWAP and positive volume in the 45-day pre-window and
+another in the 60-day post-window, program rows excluded) -> a hurricane
+contract (Florida or U.S. region) priced on both sides -> a registered
+fund's N-PORT mark with a period end inside the window.
+
+| | Ian (2022-09-28) | Milton (2024-10-09) |
+|---|---:|---:|
+| Florida-exposed deals in the hazard map | 406 | 406 |
+| alive at the event (strict bridge TRACE dates) | 75 | 87 |
+| of which high-confidence CUSIP | 60 | 66 |
+| usable prices both sides, strict any confidence | 10 | 12 |
+| usable prices both sides, high only | 10 | 9 |
+| storm-contract history both sides (event-level) | yes: 29 contracts priced both sides, Kalshi, 45/60 priced days | yes: 50 contracts, Kalshi and Polymarket, 45/54 priced days |
+| passing, strict / high | 10 / 10 | 12 / 9 |
+| passing with a fund mark inside the window | 6 / 6 | 6 / 6 |
+| passing with a mark in the event's calendar quarter | 6 / 6 | 6 / 6 |
+
+Reading it: the binding constraint is TRACE liquidity, not the bridge or
+the markets. Of the 75 to 87 exposed deals alive at each event, 10 to 12
+trade on both sides of the window; the storm-contract history is there for
+both events (Kalshi only for Ian; Polymarket joins for Milton) and every
+passing deal shares it. Half the passing deals also carry a fund mark
+inside the window (period ends 2022-10-31 and 2024-10-31). The counts
+match the event check's `deals_with_trades_both_sides_by_group.exposed`
+(10 and 12). `alive_at_event` is computed from the strict bridge's TRACE
+dates, so the 33 program-bridged deals in the hazard map cannot pass it;
+they are excluded from the gate by construction, as from the event check's
+default run. A wider window (`--pre-days`, `--post-days`) is the one lever
+that adds deals; the hand check of which deals those are is the next
+step before any design.
+
 ## Checkpoint (2026-11-18): atlas universe and sponsor fixes, review lists, methods page
 
 Phase 2 follow-through on the atlas (`src/build_atlas.py`, `src/render_atlas.py`,
