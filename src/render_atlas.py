@@ -28,7 +28,7 @@ OUT_PATH = ATLAS_DIR / "atlas.html"
 SEGMENT_ORDER = ["core_property_cat", "private_lite", "mortgage", "life_health", "cyber", "other_specialty"]
 SEGMENT_LABELS = {"core_property_cat": "Core property cat", "private_lite": "Private / lite", "mortgage": "Mortgage ILS",
                   "life_health": "Life and health", "cyber": "Cyber", "other_specialty": "Other specialty"}
-SPONSOR_ORDER = ["insurer", "reinsurer", "public_sector", "corporate_other", "unknown"]
+SPONSOR_ORDER = ["insurer", "reinsurer", "public_sector", "corporate_other", "undisclosed", "unknown"]
 TRIGGER_ORDER = ["Indemnity", "Industry loss index", "Parametric", "Parametric index", "Modelled loss", "unknown"]
 BAND_ORDER = ["ap_lt_1", "ap_1_2", "ap_2_4", "ap_4_8", "ap_8_plus", "ap_unknown"]
 BAND_LABELS = {"ap_lt_1": "Attachment probability below 1%", "ap_1_2": "1% to 2%", "ap_2_4": "2% to 4%",
@@ -278,16 +278,18 @@ def render(payload: dict, summary: dict) -> str:
         p = summary.get("peril", {})
         figs.append(_fig("f-peril", "Core property-cat principal by hazard class and year",
                          "A deal covering several classes is counted in each and its size split equally; the hazard map is the panel builder's peril mapping",
-                         "Core segment only: %d deals, %d mapped to at least one hazard class, %d unmapped, %d carry a mixed specialty peril and stay in the core." % (
-                             p.get("core_deals", 0), p.get("core_deals_mapped", 0), p.get("core_deals_unmapped", 0), p.get("core_deals_mixed_peril", 0))))
+                         "Core segment only: %d deals, %d mapped to at least one hazard class (%d of them only as multi-peril, unspecified), %d unmapped, %d carry a mixed specialty peril and stay in the core." % (
+                             p.get("core_deals", 0), p.get("core_deals_mapped", 0), p.get("core_deals_multi_peril_unspecified", 0),
+                             p.get("core_deals_unmapped", 0), p.get("core_deals_mixed_peril", 0))))
     if "trigger" in payload:
         figs.append(_fig("f-trigger", "Issued principal by trigger type and year", "Whole directory; 'unknown' is a page the parser read no trigger from",
                          "Trigger known on %d of %d deals." % (sum(v for k, v in u.get("trigger_type", {}).items() if k != "unknown"), u.get("deals", 0))))
     if "sponsor" in payload:
         figs.append(_fig("f-sponsor", "Issued principal by sponsor type and year",
-                         "Keyword classification of the parsed sponsor name: insurer, reinsurer, public sector, corporate or other; unknown where the page named none",
-                         "Sponsor named on %d of %d deals; the keyword rules are in build_atlas.py and misfiles are expected at the margin (a corporate captive, a public-sector pool with a company name)." % (
-                             u.get("deals", 0) - u.get("sponsor_type", {}).get("unknown", 0), u.get("deals", 0))))
+                         "Keyword classification of the parsed sponsor name: insurer, reinsurer, public sector, corporate or other; undisclosed where a private deal names none, unknown where a public one does",
+                         "Sponsor named on %d of %d deals (%d private deals name none); the keyword rules are in build_atlas.py, the corporate/other and unknown rows are listed in review_sponsor_type.csv for a hand check." % (
+                             u.get("deals", 0) - u.get("sponsor_type", {}).get("unknown", 0) - u.get("sponsor_type", {}).get("undisclosed", 0),
+                             u.get("deals", 0), u.get("sponsor_type", {}).get("undisclosed", 0))))
     if "layers" in payload:
         L = payload["layers"]
         inner = "".join(

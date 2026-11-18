@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from build_atlas import (  # noqa: E402
     ap_band, classify_segment, classify_sponsor, fund_flows_table, guidance_mid, hazard_classes, layer_table,
-    lineage_of, marks_table, pct_to_float, peril_table, universe_table, usd_millions, _by_year,
+    lineage_of, marks_table, pct_to_float, peril_table, review_lists, universe_table, usd_millions, _by_year,
 )
 
 
@@ -56,6 +56,11 @@ class ParsersTests(unittest.TestCase):
         self.assertEqual(classify_segment("Unknown property catastrophe risks", "X", "True"), ("private_lite", False))
         self.assertEqual(classify_segment("U.S. hurricane, UK extreme mortality", "X", ""), ("core_property_cat", True))
         self.assertEqual(classify_segment("U.S. hurricane, UK extreme mortality", "X", "True"), ("private_lite", True))
+        self.assertEqual(classify_segment("Life reinsurance", "L1 - Securitization", ""), ("life_health", False))
+        for text in ("Credit reinsurance", "Financial guarantee risks", "Event cancellation risk", "Casualty losses",
+                     "Temperature risks"):
+            self.assertEqual(classify_segment(text, "X", ""), ("other_specialty", False), text)
+        self.assertEqual(classify_segment("Multi peril - U.S. & Canada", "X", ""), ("core_property_cat", False))
 
     def test_sponsor_types(self):
         self.assertEqual(classify_sponsor("USAA"), "insurer")
@@ -65,6 +70,13 @@ class ParsersTests(unittest.TestCase):
         self.assertEqual(classify_sponsor("National Mortgage Insurance Corporation"), "insurer")
         self.assertEqual(classify_sponsor("Alphabet Inc."), "corporate_other")
         self.assertEqual(classify_sponsor(""), "unknown")
+        self.assertEqual(classify_sponsor("", "True"), "undisclosed")
+        self.assertEqual(classify_sponsor("Gothaer Allgemeine Versicherungs AG"), "insurer")
+        self.assertEqual(classify_sponsor("PICC Property and Casualty Company Limited"), "insurer")
+        self.assertEqual(classify_sponsor("PURE"), "insurer")
+        self.assertEqual(classify_sponsor("GAREAT"), "public_sector")
+        self.assertEqual(classify_sponsor("Asian Development Bank"), "public_sector")
+        self.assertEqual(classify_sponsor("Pandemic Emergency Financing Facility (PEF)"), "public_sector")
 
     def test_bands(self):
         self.assertEqual(ap_band(0.5), "ap_lt_1")
@@ -93,6 +105,9 @@ class TableTests(unittest.TestCase):
         u = universe_table(deals)
         self.assertEqual(hazard_classes("U.S. hurricane, severe thunderstorm"), ["hurricane_or_named_storm", "severe_convective_storm"])
         self.assertEqual(hazard_classes("Unknown property catastrophe risks"), [])
+        self.assertEqual(hazard_classes("Multi peril - U.S. & Canada"), ["multi_peril_unspecified"])
+        self.assertEqual(hazard_classes("Worldwide all perils incl. marine & aviation"), ["multi_peril_unspecified"])
+        self.assertEqual(hazard_classes("U.S. multi-peril including hurricane"), ["hurricane_or_named_storm"])
         p = peril_table(u)
         a_rows = p[p.issue_year == 2020]
         self.assertEqual(set(a_rows.hazard_class), {"hurricane_or_named_storm", "severe_convective_storm", "unmapped"})
@@ -101,6 +116,18 @@ class TableTests(unittest.TestCase):
         self.assertEqual(hurr.deals_multi, 1)
         self.assertEqual(a_rows[a_rows.hazard_class == "unmapped"].iloc[0].deals, 1)
         self.assertEqual(p[p.issue_year == 2012].iloc[0].hazard_class, "hurricane_or_named_storm")
+
+    def test_review_lists(self):
+        deals = _deals()
+        deals.loc[6, "perils_covered"] = "Global peak perils"
+        u = universe_table(deals)
+        u["hazard_classes"] = u["perils_covered"].map(lambda t: "|".join(hazard_classes(t)))
+        r = review_lists(u)
+        self.assertEqual(r["review_sponsor_type"]["deal_slug"].tolist(), ["g"])  # d is private: undisclosed, not listed
+        self.assertEqual(u.loc[u.deal_slug.eq("d"), "sponsor_type"].iloc[0], "undisclosed")
+        self.assertEqual(r["review_hazard_class"]["deal_slug"].tolist(), ["g"])
+        self.assertEqual(r["review_hazard_class"]["hazard_classes"].iloc[0], "multi_peril_unspecified")
+        self.assertTrue((r["review_sponsor_type"]["review"] == "").all())
 
     def test_layers(self):
         u = universe_table(_deals())

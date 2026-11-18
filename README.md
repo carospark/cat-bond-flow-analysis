@@ -418,10 +418,15 @@ core property-catastrophe market that is left. Mortgage, life and lite
 deals are reported beside the core, never folded into it, and a deal whose
 peril text names both a specialty line and a property peril stays in the
 core with a `mixed_peril` flag. Sponsor type (insurer, reinsurer, public
-sector, corporate, unknown) is a keyword classification of the parsed
-sponsor name. Core perils are mapped to hazard classes with the panel
-builder's lexicon; a deal covering several classes counts in each and has
-its size split equally, and the table says how many were split. Tranches
+sector, corporate, undisclosed for a private deal naming none, unknown) is
+a keyword classification of the parsed sponsor name. Core perils are
+mapped to hazard classes with the panel builder's lexicon; a deal covering
+several classes counts in each and has its size split equally, and the
+table says how many were split; text that only says multi-peril is its
+own class. The rows a hand review should look at (corporate or unknown
+sponsors, core deals with no or only an unspecified hazard class) are
+written to `data/atlas/review_*.csv`. The conventions, weights and
+annualisation behind every table are in `docs/ATLAS_METHODS.md`. Tranches
 are banded by attachment probability (below 1%, 1 to 2, 2 to 4, 4 to 8, 8
 and above, not stated) with the median spread, expected loss and
 price-guidance midpoint per band and year, each with its own count. The

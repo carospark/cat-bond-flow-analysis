@@ -5,6 +5,60 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-11-18): atlas universe and sponsor fixes, review lists, methods page
+
+Phase 2 follow-through on the atlas (`src/build_atlas.py`, `src/render_atlas.py`,
+`tests/test_build_atlas.py` 9 -> 10, suite 156 -> 157). Three rule gaps
+the unmapped and unknown rows exposed, closed as rules:
+
+- Universe. "Life reinsurance" (the L1 to L4 Securitization deals) now
+  `life_health`; credit reinsurance, financial guarantee (Fidus Re x4),
+  event cancellation (Golden Goal), casualty (Avalon Re) and temperature
+  (Kelvin) now `other_specialty`. Core deals 847 -> 834, life 35 -> 39,
+  other specialty 16 -> 27, private/lite 340 -> 338. Closing core stock at
+  2026-08 63,440 -> 62,915 (the $525m of Fidus Re left the core), other
+  specialty 367 -> 892.
+- Sponsor type. A blank sponsor on a private deal is `undisclosed` (258
+  deals; the sponsor is not published), so `unknown` is now the 4 public
+  deals whose page named none (Market Re 2014-4 and 2015-1, Resilience Re
+  1661A, ILN SAC 2019-1). Rule refinements: Versicherung, "Property and
+  Casualty", PICC, PURE, Pacifica, Brit -> insurer; GAREAT, Tajikistan,
+  the Pandemic Emergency Financing Facility, development banks, pools ->
+  public sector. Corporate/other 34 -> 25, insurer 543 -> 548, public 143
+  -> 151, reinsurer 329 -> 325.
+- Hazard classes. Peril text that names no hazard but calls the deal
+  multi-peril ("Multi peril - U.S. & Canada", "Worldwide all perils",
+  "Global peak perils") is its own class `multi_peril_unspecified` (11
+  core deals) instead of `unmapped`; unmapped is now 4 (Resilience Re
+  1661A, Orchard ILS "Australia and New Zealand catastrophe risks", ILN SAC,
+  Quercus II "Convective storm (France only)", which the lexicon reads only
+  as "severe convective"). Summary leaf `core_deals_multi_peril_unspecified`.
+
+Review lists for the hand check Caro asked for, written by the builder
+(`review_lists`): `data/atlas/review_sponsor_type.csv` (29 rows: the 25
+corporate/other and the 4 unknown, each with a blank `review` column) and
+`data/atlas/review_hazard_class.csv` (15: the 11 multi-peril and the 4
+unmapped). A reviewed value belongs in the rules, not in the CSV. Summary
+leaf `review` carries the counts.
+
+`docs/ATLAS_METHODS.md` is new: the universe rule, sponsor typing, the
+equal peril split and why it is a convention, issue year, size bases,
+equal versus size weights in the layer table, the band edges and their
+thin 2019 to 2022 coverage, the roll-forward stock conventions, monthly
+fund flows left null rather than zero, the marks table, the comparators'
+own units. README points to it.
+
+Atlas regenerated and diffed leaf by leaf; nothing else moved. The parser-
+side attachment-probability and spread recall round is in the parser's
+HANDOFF.md under the same date.
+
+Left for Caro: tick the two review lists; choose the band variable for the
+layer view (attachment probability as now, or expected loss, stated on
+1,036 tranches against 802); sign off the six-segment rule and the band
+edges; write the Phase 3 pre-registration (what pattern distinguishes
+reallocation from a common capital-cycle effect) before the atlas is read
+for it.
+
 ## Checkpoint (2026-11-17, later): Argon bridge fix, audit worksheet, regeneration
 
 Three things on top of the checkpoint below.

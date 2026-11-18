@@ -24,6 +24,8 @@ Outputs under data/atlas/:
   trigger_by_year.csv       deals and issued USD by trigger type and year
   sponsor_type_by_year.csv  deals and issued USD by sponsor type and year
   layer_by_year.csv         tranches by attachment-probability band and year: spread, EL, size
+  review_sponsor_type.csv   sponsors the keyword rules left as corporate/other or unknown, for a hand review
+  review_hazard_class.csv   core deals mapped to no hazard class, or only to multi_peril_unspecified
   outstanding_by_segment.csv  roll-forward closing stock per year by segment
   fund_flows_by_month.csv   net subscriptions per fund lineage per month, event windows marked
   marks_by_quarter.csv      fund mark versus TRACE gap distribution per quarter
@@ -35,10 +37,15 @@ Universe rule (segments are exclusive, applied in this order): mortgage
 (peril names mortgage insurance, or the issuer is a known mortgage ILS
 programme); life_health (mortality, longevity, medical, health, pandemic);
 cyber; other_specialty (terror, lottery, aviation, marine, energy, crop,
-agriculture, liability, workers, operational, satellite); private_lite
+agriculture, liability, workers, operational, satellite, credit, financial
+guarantee, event cancellation, casualty, temperature); private_lite
 (the directory marks the deal private); core_property_cat (everything
 else, including "unknown property catastrophe risks"). Mortgage, life and
 lite are reported, never folded into the core.
+
+Sponsor type is a keyword classification of the parsed sponsor name;
+`undisclosed` is a private deal with no sponsor named, `unknown` a public
+one. Method and weights: docs/ATLAS_METHODS.md.
 
 Layer bands are on the tranche's attachment probability in percent:
 below 1, 1 to 2, 2 to 4, 4 to 8, 8 and above. Spread is the parsed
@@ -79,12 +86,16 @@ CORE_PERIL_RE = re.compile(
     r"catastrophe|hail|tornado|convective|winter|volcan|tsunami|meteorite|peril", re.I)
 PERIL_RULES = [
     ("mortgage", re.compile(r"mortgage", re.I)),
-    ("life_health", re.compile(r"mortality|longevity|medical|health|pandemic|life insurance|lapse", re.I)),
+    ("life_health", re.compile(r"mortality|longevity|medical|health|pandemic|life (?:re)?insurance|lapse", re.I)),
     ("cyber", re.compile(r"\bcyber", re.I)),
     ("other_specialty", re.compile(
         r"terror|lottery|aviation|marine|energy|crop|agricultur|liability|workers|operational|satellite|space|"
-        r"motor|auto physical|shipping|trade credit", re.I)),
+        r"motor|auto physical|shipping|trade credit|\bcredit\b|financial guarantee|event cancellation|casualty|"
+        r"temperature", re.I)),
 ]
+# Peril text that names no hazard but says the deal is multi-peril; kept apart
+# from `unmapped`, which is text the lexicon simply does not recognise.
+MULTI_PERIL_RE = re.compile(r"multi.?peril|all perils|all risks|peak perils|multiple .*perils|worldwide", re.I)
 SPONSOR_RULES = [
     ("public_sector", re.compile(
         r"citizens|authority|government|republic|ministry|state of|kingdom|world bank|ibrd|fema|nfip|tcip|ccrif|"
@@ -92,7 +103,8 @@ SPONSOR_RULES = [
         r"transportation|zenkyoren|caisse|consorcio|earthquake commission|\beqc\b|texas windstorm|twia|"
         r"north carolina|louisiana|florida hurricane|\bcea\b|cal(?:ifornia)? earthquake|jamaica|mexico|chile|"
         r"philippines|peru|colombia|new zealand|agency|municipal|hong kong|hkmc|turkish|underwriting association|"
-        r"\bjua\b|\biua\b|fair plan|windstorm", re.I)),
+        r"\bjua\b|\biua\b|fair plan|windstorm|gareat|tajikistan|pandemic emergency|financing facility|"
+        r"development bank|\bpool\b", re.I)),
     ("reinsurer", re.compile(
         r"\bre\b|reinsurance|reinsurer|\bscor\b|swiss re|munich re|hannover|everest|renaissance|partner re|"
         r"arch capital|axis|aspen|validus|markel|sirius|transre|odyssey|lloyd|syndicate|toa re|korean re|"
@@ -108,7 +120,8 @@ SPONSOR_RULES = [
         r"mapfre|unipol|achmea|ageas|aviva|direct line|admiral|\bnmi\b|enact|fidelis|convex|ark\b|"
         r"lancashire|kemper|progressive|geico|mercury|palomar|kingstone|florida peninsula|first protective|"
         r"chartis|amtrust|vantage risk|core specialty|\bcna\b|\bagf\b|yasuda|fm global|andover|"
-        r"people's trust|tower hill|castle key|texas farm|louisiana farm|bankers|elements|fednat|ark re", re.I)),
+        r"people's trust|tower hill|castle key|texas farm|louisiana farm|bankers|elements|fednat|ark re|"
+        r"versicherung|property and casualty|property & casualty|\bp&c\b|\bpicc\b|\bpure\b|pacifica|\bbrit\b", re.I)),
 ]
 EVENT_WINDOWS = {
     "ian": ("2022-08", "2022-11"),
@@ -183,10 +196,13 @@ def classify_segment(perils: str, issuer_name: str, is_private: str) -> tuple[st
     return "core_property_cat", False
 
 
-def classify_sponsor(sponsor: str) -> str:
+def classify_sponsor(sponsor: str, is_private: str = "") -> str:
+    """Keyword type of the parsed sponsor name. A blank sponsor on a deal the
+    directory marks private is `undisclosed` (the sponsor is not published);
+    a blank on any other deal is `unknown` (the page named none)."""
     text = str(sponsor or "").strip()
     if not text:
-        return "unknown"
+        return "undisclosed" if str(is_private).strip().lower() == "true" else "unknown"
     for label, rule in SPONSOR_RULES:
         if rule.search(text):
             return label
@@ -226,7 +242,7 @@ def universe_table(deals: pd.DataFrame) -> pd.DataFrame:
         "mixed_peril": [classify_segment(p, n, pr)[1] for p, n, pr in
                         zip(deals["perils_covered"], deals["deal_name"], deals["deal_is_private"])],
         "sponsor": deals["cedent_sponsor"],
-        "sponsor_type": deals["cedent_sponsor"].map(classify_sponsor),
+        "sponsor_type": [classify_sponsor(sp, pr) for sp, pr in zip(deals["cedent_sponsor"], deals["deal_is_private"])],
         "trigger_type": deals["trigger_type"].replace("", "unknown"),
         "perils_covered": deals["perils_covered"],
         "deal_status": deals["deal_status"],
@@ -254,12 +270,38 @@ def _by_year(universe: pd.DataFrame, key: str) -> pd.DataFrame:
 
 
 def hazard_classes(perils: str) -> list[str]:
-    """Distinct hazard classes named by a deal's peril text, in lexicon order."""
+    """Distinct hazard classes named by a deal's peril text, in lexicon order.
+    Text naming no hazard but calling the deal multi-peril ("Multi peril",
+    "Worldwide all perils", "Global peak perils") is one class,
+    `multi_peril_unspecified`; text the lexicon does not recognise at all
+    ("Unknown property catastrophe risks") is the empty list."""
     out = []
-    for hazard, _region in map_perils(str(perils or "")):
+    text = str(perils or "")
+    for hazard, _region in map_perils(text):
         if hazard not in out:
             out.append(hazard)
+    if not out and MULTI_PERIL_RE.search(text):
+        out.append("multi_peril_unspecified")
     return out
+
+
+REVIEW_SPONSOR_TYPES = ("corporate_other", "unknown")
+
+
+def review_lists(universe: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """The rows a hand review should look at: sponsors the keyword rules put
+    in `corporate_other` or `unknown`, and core deals whose peril text maps
+    to no hazard class or only to `multi_peril_unspecified`. Each frame has
+    a blank `review` column to fill with the right value."""
+    cols = ["deal_slug", "deal_url", "deal_name", "issue_year", "segment"]
+    sponsors = universe[universe["sponsor_type"].isin(REVIEW_SPONSOR_TYPES)][cols + ["sponsor", "sponsor_type"]].copy()
+    sponsors["review"] = ""
+    core = universe["segment"].eq("core_property_cat")
+    weak = universe["hazard_classes"].isin(["", "multi_peril_unspecified"])
+    perils = universe[core & weak][cols + ["perils_covered", "hazard_classes"]].copy()
+    perils["review"] = ""
+    return {"review_sponsor_type": sponsors.sort_values(["sponsor_type", "issue_year"]).reset_index(drop=True),
+            "review_hazard_class": perils.sort_values("issue_year").reset_index(drop=True)}
 
 
 def peril_table(universe: pd.DataFrame, mapper=hazard_classes) -> pd.DataFrame:
@@ -467,6 +509,9 @@ def build(parser_root: Path = PARSER_ROOT, out_dir: Path = OUT_DIR) -> dict:
     _by_year(universe, "sponsor_type").to_csv(out_dir / "sponsor_type_by_year.csv", index=False)
     layers = layer_table(tranches, universe)
     layers.to_csv(out_dir / "layer_by_year.csv", index=False)
+    reviews = review_lists(universe)
+    for name, frame in reviews.items():
+        frame.to_csv(out_dir / f"{name}.csv", index=False)
 
     summary = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -486,8 +531,10 @@ def build(parser_root: Path = PARSER_ROOT, out_dir: Path = OUT_DIR) -> dict:
             "core_deals_mapped": int((universe["segment"].eq("core_property_cat") & universe["hazard_classes"].ne("")).sum()),
             "core_deals_in_several_classes": int((universe["segment"].eq("core_property_cat") & universe["hazard_classes"].str.contains(r"\|")).sum()),
             "core_deals_unmapped": int(peril.loc[peril["hazard_class"].eq("unmapped"), "deals"].sum()) if not peril.empty else 0,
+            "core_deals_multi_peril_unspecified": int((universe["segment"].eq("core_property_cat") & universe["hazard_classes"].eq("multi_peril_unspecified")).sum()),
             "core_deals_mixed_peril": int((universe["segment"].eq("core_property_cat") & universe["mixed_peril"]).sum()),
         },
+        "review": {name: int(len(frame)) for name, frame in reviews.items()},
         "layers": {
             "tranches": int(len(tranches)),
             "tranches_with_attachment_probability": int(tranches["attachment_probability"].map(pct_to_float).notna().sum()),
