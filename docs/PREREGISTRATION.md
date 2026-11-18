@@ -1,11 +1,13 @@
 # Pre-registration: substitution between cat bonds and traditional reinsurance
 
-**Status: draft for Caro to edit.** Nothing below has been run. The
-point of writing it first is that the atlas is descriptive, spread
-co-movement plus fund inflows is consistent with several mechanisms, and
-a test that cannot lose is not a test. Fill the bracketed choices, cut
-what you disagree with, then date and commit it before the atlas is read
-for substitution.
+**Status: draft with defaults filled, awaiting Caro's sign-off.**
+Nothing below has been run. The point of writing it first is that the
+atlas is descriptive, spread co-movement plus fund inflows is consistent
+with several mechanisms, and a test that cannot lose is not a test. Every
+choice below was filled from the data on 2026-11-18 with its reason in
+the "Why" line; change any of them, then date and commit before the atlas
+is read for substitution. Counts are core tranches with both spread and
+expected loss stated.
 
 ## 1. Two hypotheses, kept apart
 
@@ -31,34 +33,57 @@ data does not have. The write-up says so and does not infer it.
 ## 2. Definitions fixed in advance
 
 **Overlap group.** Core property-cat tranches whose terms match where
-traditional reinsurance programmes attach: peril [US hurricane, or US
-multi-peril including hurricane], trigger [indemnity], attachment
-probability stated and in [the 2% to 8% bands], issue years [2022 to
-2026], where attachment probability covers at least half of issued
-principal. Taken from `layer_by_year.csv` and `universe_deals.csv` with
-the full peril tags, never from the equal split.
+traditional reinsurance programmes attach: peril US hurricane, alone or
+within a US multi-peril deal (hazard class contains
+`hurricane_or_named_storm`); trigger indemnity; attachment probability
+stated and in the 2% to 8% bands; issue years 2023 to 2026. Taken from
+`universe_deals.csv` (full peril tags, never the equal split) and the
+parser's tranches table.
 
-**Comparison group.** Core tranches of the same years outside the
-overlap: [remote layers below 1%; industry-loss and parametric triggers;
-non-US perils]. State which of these is the primary comparison and which
-are robustness.
+Why: indemnity US hurricane is the product a Florida or nationwide
+reinsurance programme buys; the 2% to 8% attachment bands are where the
+working layers of those programmes sit, the below-1% band being remote
+cover reinsurance rarely writes. Tranches with spread and expected loss in
+this group: 2022 5, 2023 20, 2024 22, 2025 35, 2026 41. 2022 is below the
+cell minimum, so the overlap group begins in 2023, the hard-market step
+year. Of the US hurricane indemnity tranches issued 2022 to 2026 with an
+attachment probability, 135 of 265 fall in the 2% to 8% bands.
+
+**Comparison group.** Primary: US hurricane tranches with an
+industry-loss-index or parametric trigger, any attachment band (same
+peril and cycle, a product reinsurance programmes do not buy in the same
+way). Robustness: non-US perils with an attachment probability stated.
+Reported but below the cell minimum: remote US hurricane indemnity layers
+below 1%.
+
+Why: the index-trigger group is the only comparison with enough tranches
+every year (2022 14, 2023 14, 2024 26, 2025 27, 2026 24); non-US has 3,
+11, 11, 23, 12; remote layers 2, 6, 3, 5, 8.
 
 **Risk-adjusted spread.** Spread minus expected loss, in percentage
-points, size-weighted within a cell; where a cell has at least [10]
+points, size-weighted within a cell; where a cell has at least 10
 tranches with both, a continuous adjustment (spread regressed on expected
-loss within the year) replaces the band.
+loss within the year, both groups pooled) replaces the band, and the
+differential is read from the group coefficient.
 
 **Cycle dating.** The Guy Carpenter global property-catastrophe
-rate-on-line index dates the cycle: the hard-market peak at the [1
-January 2023] renewal, softening from [2024]. The global index dates the
+rate-on-line index (2000 = 100) dates the cycle: 130 at the 2021 renewal,
+145 in 2022, 187 in 2023 (the step), 191 in 2024 (the peak), 178 in 2025,
+156 in 2026. So: hard-market step at the 1 January 2023 renewal, peak at
+1 January 2024, softening at 2025 and 2026. The global index dates the
 cycle only. It cannot say that a specific reinsurance layer became cheaper
 relative to its cat bond counterpart, because renewal outcomes vary by
 region and attachment; the result therefore stays at the level of
 differential cat bond pricing and issuance around renewals.
 
-**Renewal windows.** [1 January, 1 June, 1 July] of each year. Issuance
-is assigned to the window it precedes. Fund flows are read with a lag of
-[one quarter] before the window.
+**Renewal windows.** 1 January, 1 June and 1 July of each year, the
+June date being the Florida renewal. Issuance is assigned to the renewal
+it precedes (a May deal to 1 June, a December deal to 1 January). Fund
+flows are read over the quarter ending at the renewal date.
+
+Why: those are the three dates the rate-on-line index and the Florida
+programmes price on; a one-quarter flow window matches the N-PORT
+quarterly cadence and avoids reading a single month's redemptions.
 
 **Fund demand.** Net subscriptions per registered lineage per month from
 the N-PORT filings, sales minus redemptions, so already free of returns
@@ -69,12 +94,15 @@ the N-PORT filings, sales minus redemptions, so already free of returns
 If H1 or H2 holds, after the rate-on-line peak and into the softening:
 
 - P1. The overlap group's risk-adjusted spread falls relative to the
-  comparison group's. Predicted sign: [negative differential change].
+  comparison group's between the 2024 peak and the 2025 and 2026
+  softening. Predicted sign: negative differential change. The 2023 to
+  2024 step is reported too, with the prediction that the overlap group
+  rose at least as much as the comparison group.
 - P2. The overlap group's share of core issued principal rises relative to
   the years before the peak.
 - P3. Net subscriptions into the cat bond lineages are positive in the
-  [quarter] before the renewals where P1 and P2 hold, and negative or flat
-  in the windows where they do not.
+  quarter ending at the renewals where P1 and P2 hold, and negative or
+  flat in the windows where they do not.
 
 If H0 holds: P1 shows no differential (both groups move together), P2 is
 flat, and P3 is uninformative because flows follow absolute returns.
@@ -84,14 +112,22 @@ P1 holds in the secondary market, P2 does not.
 
 ## 4. Decision rule
 
-- A differential is reported only where both groups have at least [10]
+- A differential is reported only where both groups have at least 10
   tranches with spread and expected loss in the cell. Fewer: the test is
   inconclusive for that window, and is reported as inconclusive, not
-  omitted.
+  omitted. At 10 per cell, the overlap group can be tested in every year
+  from 2023 and the index comparison in every year from 2022; renewal-
+  window cells (three a year) will often fall below it, in which case the
+  year is the cell and the window result is shown as supporting detail.
 - The differential is the change in the overlap group's risk-adjusted
-  spread minus the change in the comparison group's, between [the window
-  before the peak] and [each window after]. Report the number of tranches
-  and the issued principal behind each side.
+  spread minus the change in the comparison group's, from the 2024 peak
+  year to each of 2025 and 2026, and from 2023 to 2024 for the step.
+  Report the number of tranches and the issued principal behind each side.
+- Pre-2023 baseline: there is no attachment-probability coverage before
+  2022, so a pre-hard-market baseline is read from the expected-loss
+  bands instead (US hurricane indemnity tranches with expected loss 1% to
+  4%, 2019 to 2022, the band that corresponds to the 2% to 8% attachment
+  group where both are stated), reported as a proxy and labelled so.
 - Parallel moves in both groups are reported as consistent with H0.
 - A differential that disappears when the comparison is restricted to the
   same expected-loss band is reported as a composition effect, not
@@ -105,10 +141,12 @@ P1 holds in the secondary market, P2 does not.
   reported separately, not folded into P1.
 - Issue size: larger deals price tighter; report the differential with and
   without size weighting.
-- Florida-specific changes: the [2022 and 2023 Florida legislative
-  reforms] shift the demand for Florida layers for reasons unrelated to
-  reinsurance pricing; the Florida share of the overlap group is reported
-  per window.
+- Florida-specific changes: the Florida legislative reforms of December
+  2022 (SB 2-A) and the 2023 session changed litigation and the state
+  reinsurance backstop, shifting demand for Florida layers for reasons
+  unrelated to reinsurance pricing; the Florida share of the overlap
+  group is reported per window (19% of overlap tranches from 2022 name
+  Florida in their peril text).
 - Retrocession and collateralised reinsurance pricing, which the data
   does not hold; named as an unobserved alternative.
 
