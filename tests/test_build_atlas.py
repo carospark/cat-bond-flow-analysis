@@ -11,8 +11,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from build_atlas import (  # noqa: E402
-    ap_band, classify_segment, classify_sponsor, fund_flows_table, guidance_mid, hazard_classes, layer_table,
-    lineage_of, marks_table, pct_to_float, peril_table, review_lists, universe_table, usd_millions, _by_year,
+    ap_band, classify_segment, classify_sponsor, fund_flows_table, guidance_mid, hazard_classes, layer_coverage_table,
+    layer_table, lineage_of, marks_table, pct_to_float, peril_table, review_lists, universe_table, usd_millions, _by_year,
 )
 
 
@@ -84,6 +84,8 @@ class ParsersTests(unittest.TestCase):
         self.assertEqual(ap_band(3.99), "ap_2_4")
         self.assertEqual(ap_band(8.0), "ap_8_plus")
         self.assertEqual(ap_band(None), "ap_unknown")
+        self.assertEqual(ap_band(1.5, "el"), "el_1_2")
+        self.assertEqual(ap_band(None, "el"), "el_unknown")
 
 
 class TableTests(unittest.TestCase):
@@ -138,6 +140,17 @@ class TableTests(unittest.TestCase):
             "spread_risk_margin": ["6%", "10%", "", ""], "price_guidance": ["5.5% to 6.5%", "", "", "7%"],
             "tranche_size_final": ["$100m", "$300m", "$400m", "€50m"],
         })
+        el = layer_table(t, u, band_on="el")
+        el2020 = el[(el.segment == "core_property_cat") & (el.issue_year == 2020)]
+        self.assertEqual(set(el2020.band), {"el_1_2", "el_2_4"})
+        self.assertEqual(int(el2020[el2020.band == "el_2_4"].iloc[0].n_spread), 1)
+        cov = layer_coverage_table(t, u)
+        c2020 = cov[(cov.segment == "core_property_cat") & (cov.issue_year == 2020)].iloc[0]
+        self.assertEqual((c2020.tranches, c2020.n_el, c2020.n_ap, c2020.n_both, c2020.n_el_spread), (2, 2, 2, 2, 2))
+        self.assertEqual((c2020.issued_usd_m, c2020.usd_with_el), (400.0, 400.0))
+        c2012 = cov[cov.issue_year == 2012].iloc[0]
+        self.assertEqual((c2012.n_el, c2012.n_ap, c2012.n_el_spread), (1, 1, 0))
+        self.assertTrue(pd.isna(c2012.share_usd_with_el))  # euro size, not weighted
         out = layer_table(t, u)
         core2020 = out[(out.segment == "core_property_cat") & (out.issue_year == 2020)]
         self.assertEqual(set(core2020.band), {"ap_1_2", "ap_4_8"})

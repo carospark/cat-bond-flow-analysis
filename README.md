@@ -427,9 +427,12 @@ own class. The rows a hand review should look at (corporate or unknown
 sponsors, core deals with no or only an unspecified hazard class) are
 written to `data/atlas/review_*.csv`. The conventions, weights and
 annualisation behind every table are in `docs/ATLAS_METHODS.md`. Tranches
-are banded by attachment probability (below 1%, 1 to 2, 2 to 4, 4 to 8, 8
-and above, not stated) with the median spread, expected loss and
-price-guidance midpoint per band and year, each with its own count. The
+are banded twice with the same edges (below 1%, 1 to 2, 2 to 4, 4 to 8, 8
+and above, not stated): by expected loss, the primary pricing view, and
+by attachment probability, the layer view, which the pages state only
+from 2022 on; a coverage table says what each year can carry. Each band
+and year has the median spread, expected loss and price-guidance midpoint
+with its own count. The
 roll-forward stock per segment comes from the parser's ledger, fund net
 subscriptions per lineage and month from the parsed N-PORT flows with the
 Ian and Milton windows marked, and the mark-versus-TRACE gap per quarter

@@ -31,6 +31,9 @@ SEGMENT_LABELS = {"core_property_cat": "Core property cat", "private_lite": "Pri
 SPONSOR_ORDER = ["insurer", "reinsurer", "public_sector", "corporate_other", "undisclosed", "unknown"]
 TRIGGER_ORDER = ["Indemnity", "Industry loss index", "Parametric", "Parametric index", "Modelled loss", "unknown"]
 BAND_ORDER = ["ap_lt_1", "ap_1_2", "ap_2_4", "ap_4_8", "ap_8_plus", "ap_unknown"]
+EL_BAND_ORDER = [b.replace("ap_", "el_", 1) for b in BAND_ORDER]
+EL_BAND_LABELS = {"el_lt_1": "Expected loss below 1%", "el_1_2": "1% to 2%", "el_2_4": "2% to 4%",
+                  "el_4_8": "4% to 8%", "el_8_plus": "8% and above", "el_unknown": "Expected loss not stated"}
 BAND_LABELS = {"ap_lt_1": "Attachment probability below 1%", "ap_1_2": "1% to 2%", "ap_2_4": "2% to 4%",
                "ap_4_8": "4% to 8%", "ap_8_plus": "8% and above", "ap_unknown": "Attachment probability not stated"}
 MAX_SERIES = 8
@@ -193,17 +196,16 @@ def build_payload() -> tuple[dict, dict]:
                               ["deals with a USD size", str(int(part["deals_sized"].sum()))]])
             payload[name]["labels"] = {k: k.replace("_", " ") for k in payload[name]["keys"]}
 
-    layers = _read("layer_by_year.csv")
-    if layers is not None:
-        core = layers[layers["segment"].eq("core_property_cat")]
+    def _layer_payload(frame, order, labels, metric):
+        core = frame[frame["segment"].eq("core_property_cat")]
         years = sorted(core["issue_year"].unique().tolist())
         bands = {}
-        for band in BAND_ORDER:
+        for band in order:
             part = core[core["band"].eq(band)].set_index("issue_year")
             if part.empty:
                 continue
             bands[band] = {
-                "label": BAND_LABELS[band],
+                "label": labels[band],
                 "xs": [str(y) for y in years],
                 "spread": [{"x": str(y), "y": (None if y not in part.index or pd.isna(part.loc[y, "median_spread"]) else float(part.loc[y, "median_spread"])),
                             "n": (0 if y not in part.index else int(part.loc[y, "n_spread"]))} for y in years],
@@ -211,9 +213,20 @@ def build_payload() -> tuple[dict, dict]:
                         "n": (0 if y not in part.index else int(part.loc[y, "n_el"]))} for y in years],
                 "tranches": int(part["tranches"].sum()), "with_spread": int(part["n_spread"].sum()), "with_el": int(part["n_el"].sum()),
             }
-        payload["layers"] = {"bands": bands, "core_tranches": int(core["tranches"].sum()),
-                             "core_with_ap": int(core["n_ap"].sum()),
-                             "table": core.drop(columns=["segment"]).to_dict(orient="records")}
+        return {"bands": bands, "core_tranches": int(core["tranches"].sum()),
+                "core_with_metric": int(core[f"n_{metric}"].sum()),
+                "table": core.drop(columns=["segment"]).to_dict(orient="records")}
+
+    layers = _read("layer_by_year.csv")
+    if layers is not None:
+        payload["layers"] = _layer_payload(layers, BAND_ORDER, BAND_LABELS, "ap")
+    layers_el = _read("layer_by_year_el.csv")
+    if layers_el is not None:
+        payload["layers_el"] = _layer_payload(layers_el, EL_BAND_ORDER, EL_BAND_LABELS, "el")
+    cov = _read("layer_coverage_by_year.csv")
+    if cov is not None:
+        core = cov[cov["segment"].eq("core_property_cat")].drop(columns=["segment"])
+        payload["layer_coverage"] = {"table": core.to_dict(orient="records")}
 
     stock = _read("outstanding_by_segment.csv")
     if stock is not None and not stock.empty:
@@ -276,8 +289,8 @@ def render(payload: dict, summary: dict) -> str:
                              ", ".join("%s %d" % (SEGMENT_LABELS.get(k, k), v) for k, v in seg_counts.items()))))
     if "peril" in payload:
         p = summary.get("peril", {})
-        figs.append(_fig("f-peril", "Core property-cat principal by hazard class and year",
-                         "A deal covering several classes is counted in each and its size split equally; the hazard map is the panel builder's peril mapping",
+        figs.append(_fig("f-peril", "Issued principal allocated by peril, core property cat",
+                         "An accounting allocation, not exposure: a deal covering several hazard classes is counted in each and its size split equally between them; the hazard map is the panel builder's peril lexicon. Sample selection for an event study must use the full peril tags and contract terms, never this split",
                          "Core segment only: %d deals, %d mapped to at least one hazard class (%d of them only as multi-peril, unspecified), %d unmapped, %d carry a mixed specialty peril and stay in the core." % (
                              p.get("core_deals", 0), p.get("core_deals_mapped", 0), p.get("core_deals_multi_peril_unspecified", 0),
                              p.get("core_deals_unmapped", 0), p.get("core_deals_mixed_peril", 0))))
@@ -290,27 +303,34 @@ def render(payload: dict, summary: dict) -> str:
                          "Sponsor named on %d of %d deals (%d private deals name none); the keyword rules are in build_atlas.py, the corporate/other and unknown rows are listed in review_sponsor_type.csv for a hand check." % (
                              u.get("deals", 0) - u.get("sponsor_type", {}).get("unknown", 0) - u.get("sponsor_type", {}).get("undisclosed", 0),
                              u.get("deals", 0), u.get("sponsor_type", {}).get("undisclosed", 0))))
-    if "layers" in payload:
-        L = payload["layers"]
+    def _layer_fig(fig_id, L, title, sub, coverage):
         inner = "".join(
             f'<section class="fig" data-band="{html.escape(band)}"><h2>{html.escape(b["label"])}</h2>'
             f'<p class="sub">Median risk-margin spread (percent) by issue year, core tranches</p><div class="chart"></div>'
             f'<p class="coverage">{b["tranches"]} tranches in this band; spread stated on {b["with_spread"]}, expected loss on {b["with_el"]}. Hover shows the count behind each point.</p></section>'
             for band, b in L["bands"].items())
-        figs.append(f'<section class="fig" id="f-layers"><h2>Layers: spread by attachment-probability band</h2>'
-                    f'<p class="sub">One panel per band so the scales stay honest; the same y-axis unit in every panel</p>'
-                    f'<p class="coverage">Core tranches {L["core_tranches"]}, attachment probability stated on {L["core_with_ap"]}; tranches without it are the last panel. '
-                    f'Spread is the parsed risk margin; the price-guidance midpoint and size-weighted spread are in the table.</p>'
-                    f'<div class="multi">{inner}</div><details><summary>Table</summary><div class="table"></div></details></section>')
-    if "stock" in payload:
-        o = summary.get("outstanding", {})
-        figs.append(_fig("f-stock", "Outstanding principal by segment, closing stock per year",
-                         "The parser's roll-forward ledger: issued, written down at the loss month, recovered, repaid at maturity; December of each year and the as-of month for the last. Mortgage ILS amortise and are carried here at face to maturity, so that segment is an upper bound",
-                         "Book: %s; %d deals in the ledger, %d of them without a segment. TRACE maturities: %s." % (
-                             o.get("book", "n/a"), o.get("book_deals", 0), o.get("book_deals_unknown_segment", 0),
-                             "on" if o.get("trace_maturities") else "off")))
-    elif summary.get("outstanding", {}).get("skipped"):
-        figs.append('<section class="fig"><h2>Outstanding principal by segment</h2><p class="coverage">Skipped: %s</p></section>' % html.escape(str(summary["outstanding"]["skipped"])))
+        return (f'<section class="fig" id="{fig_id}"><h2>{html.escape(title)}</h2><p class="sub">{html.escape(sub)}</p>'
+                f'<p class="coverage">{coverage}</p><div class="multi">{inner}</div><details><summary>Table</summary><div class="table"></div></details></section>')
+
+    if "layers_el" in payload:
+        L = payload["layers_el"]
+        both = summary.get("layers", {}).get("core_tranches_with_both_el_and_ap", 0)
+        figs.append(_layer_fig("f-layers-el", L, "Pricing by expected-loss band (primary view)",
+                               "One panel per band, the same y-axis unit in every panel; the same edges as the attachment-probability bands below",
+                               f'Core tranches {L["core_tranches"]}, expected loss stated on {L["core_with_metric"]} ({both} of them also state an attachment probability). '
+                               'An expected-loss band is a pricing band, not a layer: it folds attachment and severity together, so bonds in one band can attach at very different probabilities. '
+                               'Coverage by year for both metrics is in the table under the next figure.'))
+    if "layers" in payload:
+        L = payload["layers"]
+        figs.append(_layer_fig("f-layers", L, "Layers: spread by attachment-probability band",
+                               "The layer language; well covered from 2022 on, a source gap for 2019 to 2021 (the pages state no attachment probability)",
+                               f'Core tranches {L["core_tranches"]}, attachment probability stated on {L["core_with_metric"]}; tranches without it are the last panel. '
+                               'Spread is the parsed risk margin; the price-guidance midpoint and size-weighted spread are in the table. '
+                               'Any layer-overlap comparison against reinsurance should use this view, and only where the year\'s coverage supports it.'))
+    if "layer_coverage" in payload:
+        figs.append('<section class="fig" id="f-layer-coverage"><h2>Coverage of the two band views, core tranches by issue year</h2>'
+                    '<p class="sub">Tranches and issued USD with expected loss, attachment probability, both, and expected loss plus a settled spread</p>'
+                    '<div class="table"></div></section>')
     if "flows" in payload:
         F = payload["flows"]
         inner = "".join(
@@ -351,10 +371,11 @@ def render(payload: dict, summary: dict) -> str:
   function mount(id,key,unit,decimals){{const f=document.getElementById(id);if(!f||!P[key])return;const d=P[key];legend(f.querySelector('.legend-host'),d.keys,d.labels,'rect');
     stackedBars(f.querySelector('.chart'),d.data,d.keys,d.labels,{{unit:unit,decimals:decimals}});const cols=Object.keys(d.table[0]||{{}});table(f.querySelector('.table'),cols,d.table);}}
   mount('f-universe','universe','USD m',0);mount('f-peril','peril','USD m, split',0);mount('f-trigger','trigger','USD m',0);mount('f-sponsor','sponsor','USD m',0);mount('f-stock','stock','USD m',0);
-  if(P.layers){{const f=document.getElementById('f-layers');for(const [band,b] of Object.entries(P.layers.bands)){{const host=f.querySelector(`[data-band="${{band}}"] .chart`);
+  for(const [id,L] of [['f-layers',P.layers],['f-layers-el',P.layers_el]]){{if(!L)continue;const f=document.getElementById(id);for(const [band,b] of Object.entries(L.bands)){{const host=f.querySelector(`[data-band="${{band}}"] .chart`);
       lines(host,b.xs,[{{key:'spread',label:'median spread %',points:b.spread}},{{key:'el',label:'median expected loss %',points:b.el}}],{{width:480,height:220,decimals:2}});
       legend(host.parentElement,['spread','el'],{{spread:'median spread %',el:'median expected loss %'}},'line');}}
-    table(f.querySelector('.table'),Object.keys(P.layers.table[0]||{{}}),P.layers.table);}}
+    table(f.querySelector('.table'),Object.keys(L.table[0]||{{}}),L.table);}}
+  if(P.layer_coverage){{const f=document.getElementById('f-layer-coverage');table(f.querySelector('.table'),Object.keys(P.layer_coverage.table[0]||{{}}),P.layer_coverage.table);}}
   if(P.flows){{const f=document.getElementById('f-flows');for(const [name,d] of Object.entries(P.flows.lineages)){{signedBars(f.querySelector(`[data-lineage="${{name}}"] .chart`),d.points,{{width:480,height:200,windows:P.flows.windows}});}}
     table(f.querySelector('.table'),Object.keys(P.flows.table[0]||{{}}),P.flows.table);}}
   if(P.comparators){{const f=document.getElementById('f-comparators');for(const p of P.comparators.panels){{const host=f.querySelector(`[data-panel="${{p.id}}"]`);

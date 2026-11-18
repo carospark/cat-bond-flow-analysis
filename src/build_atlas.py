@@ -24,6 +24,9 @@ Outputs under data/atlas/:
   trigger_by_year.csv       deals and issued USD by trigger type and year
   sponsor_type_by_year.csv  deals and issued USD by sponsor type and year
   layer_by_year.csv         tranches by attachment-probability band and year: spread, EL, size
+  layer_by_year_el.csv      the same by expected-loss band (same edges); the primary pricing view
+  layer_coverage_by_year.csv  tranches and USD with expected loss, attachment probability, both, and
+                            expected loss plus spread, per segment and year
   review_sponsor_type.csv   sponsors the keyword rules left as corporate/other or unknown, for a hand review
   review_hazard_class.csv   core deals mapped to no hazard class, or only to multi_peril_unspecified
   outstanding_by_segment.csv  roll-forward closing stock per year by segment
@@ -47,8 +50,11 @@ Sponsor type is a keyword classification of the parsed sponsor name;
 `undisclosed` is a private deal with no sponsor named, `unknown` a public
 one. Method and weights: docs/ATLAS_METHODS.md.
 
-Layer bands are on the tranche's attachment probability in percent:
-below 1, 1 to 2, 2 to 4, 4 to 8, 8 and above. Spread is the parsed
+Bands are on the tranche's attachment probability or its expected loss,
+in percent, with the same edges: below 1, 1 to 2, 2 to 4, 4 to 8, 8 and
+above. Attachment probability is the layer language but a source gap for
+2019 to 2021; expected loss is the primary pricing view and is not a
+layer, since it folds attachment and severity together. Spread is the parsed
 risk-margin spread; the price-guidance midpoint is reported beside it with
 its own count. Size weights use the final tranche size in USD where it is
 stated in dollars; non-USD tranche sizes are counted but not weighted.
@@ -209,13 +215,16 @@ def classify_sponsor(sponsor: str, is_private: str = "") -> str:
     return "corporate_other"
 
 
-def ap_band(value: float | None) -> str:
+def ap_band(value: float | None, metric: str = "ap") -> str:
+    """Band label for a percent value: `ap_1_2`, `el_2_4`, ... ; `<metric>_unknown`
+    when none is stated. The same edges serve attachment probability and
+    expected loss so the two layer tables line up."""
     if value is None or pd.isna(value):
-        return "ap_unknown"
+        return f"{metric}_unknown"
     for lo, hi, label in AP_BANDS:
         if lo <= value < hi:
-            return label
-    return "ap_unknown"
+            return label.replace("ap_", f"{metric}_", 1)
+    return f"{metric}_unknown"
 
 
 def lineage_of(fund_id: str, registry: dict) -> str:
@@ -326,7 +335,7 @@ def peril_table(universe: pd.DataFrame, mapper=hazard_classes) -> pd.DataFrame:
     return out
 
 
-def layer_table(tranches: pd.DataFrame, universe: pd.DataFrame) -> pd.DataFrame:
+def _tranche_frame(tranches: pd.DataFrame, universe: pd.DataFrame) -> pd.DataFrame:
     t = tranches.copy()
     seg = universe.set_index("deal_slug")["segment"]
     t["segment"] = t["deal_slug"].map(seg).fillna("unknown")
@@ -337,9 +346,43 @@ def layer_table(tranches: pd.DataFrame, universe: pd.DataFrame) -> pd.DataFrame:
     t["guidance_mid"] = t["price_guidance"].map(guidance_mid)
     sizes = t["tranche_size_final"].map(usd_millions)
     t["size_usd_m"] = [s[0] for s in sizes]
-    t["band"] = t["ap"].map(ap_band)
     t = t[t["issue_year"].notna()].copy()
     t["issue_year"] = t["issue_year"].astype(int)
+    return t
+
+
+def layer_coverage_table(tranches: pd.DataFrame, universe: pd.DataFrame) -> pd.DataFrame:
+    """Per segment and issue year: tranches with expected loss, with attachment
+    probability, with both, with expected loss and a spread, and the issued
+    USD behind each, so the two band views can state their coverage side
+    by side."""
+    t = _tranche_frame(tranches, universe)
+    t["has_el"], t["has_ap"], t["has_sp"] = t["el"].notna(), t["ap"].notna(), t["spread"].notna()
+    t["has_both"] = t["has_el"] & t["has_ap"]
+    t["has_el_sp"] = t["has_el"] & t["has_sp"]
+    for col in ("el", "ap", "both", "el_sp"):
+        t[f"usd_{col}"] = t["size_usd_m"].where(t[f"has_{col}"])
+    g = t.groupby(["segment", "issue_year"])
+    out = g.agg(tranches=("tranche_id", "size"), n_el=("has_el", "sum"), n_ap=("has_ap", "sum"),
+                n_both=("has_both", "sum"), n_el_spread=("has_el_sp", "sum"), issued_usd_m=("size_usd_m", "sum"),
+                usd_with_el=("usd_el", "sum"), usd_with_ap=("usd_ap", "sum"), usd_with_both=("usd_both", "sum"),
+                usd_with_el_spread=("usd_el_sp", "sum")).reset_index()
+    for col in ("n_el", "n_ap", "n_both", "n_el_spread"):
+        out[col] = out[col].astype(int)
+    for col in ("issued_usd_m", "usd_with_el", "usd_with_ap", "usd_with_both", "usd_with_el_spread"):
+        out[col] = out[col].round(1)
+    out["share_usd_with_el"] = (out["usd_with_el"] / out["issued_usd_m"]).where(out["issued_usd_m"] > 0).round(3)
+    out["share_usd_with_ap"] = (out["usd_with_ap"] / out["issued_usd_m"]).where(out["issued_usd_m"] > 0).round(3)
+    return out
+
+
+def layer_table(tranches: pd.DataFrame, universe: pd.DataFrame, band_on: str = "ap") -> pd.DataFrame:
+    """Tranches by band and issue year. `band_on` is "ap" (attachment
+    probability, the layer language) or "el" (expected loss, better covered
+    before 2022 but a pricing band rather than a layer); the edges are the
+    same."""
+    t = _tranche_frame(tranches, universe)
+    t["band"] = t[band_on].map(lambda v: ap_band(v, band_on))
     t["spread_x_size"] = t["spread"] * t["size_usd_m"]
     t["size_if_spread"] = t["size_usd_m"].where(t["spread"].notna())
     g = t.groupby(["segment", "issue_year", "band"])
@@ -355,7 +398,8 @@ def layer_table(tranches: pd.DataFrame, universe: pd.DataFrame) -> pd.DataFrame:
     out["size_weighted_spread"] = (out["spread_x_size"] / out["size_if_spread"]).where(out["size_if_spread"] > 0)
     out = out.drop(columns=["spread_x_size", "size_if_spread"])
     year_totals = t.groupby(["segment", "issue_year"]).agg(year_tranches=("tranche_id", "size"),
-                                                           year_tranches_with_ap=("ap", "count")).reset_index()
+                                                           year_tranches_with_ap=("ap", "count"),
+                                                           year_tranches_with_el=("el", "count")).reset_index()
     out = out.merge(year_totals, on=["segment", "issue_year"])
     for col in ("median_ap", "median_el", "median_spread", "median_guidance_mid", "size_weighted_spread"):
         out[col] = out[col].round(3)
@@ -500,6 +544,7 @@ def build(parser_root: Path = PARSER_ROOT, out_dir: Path = OUT_DIR) -> dict:
 
     universe = universe_table(deals)
     universe["hazard_classes"] = universe["perils_covered"].map(lambda t: "|".join(hazard_classes(t)))
+    universe["generic_peril"] = universe["segment"].eq("core_property_cat") & universe["hazard_classes"].isin(["", "multi_peril_unspecified"])
     universe.to_csv(out_dir / "universe_deals.csv", index=False)
     by_segment = _by_year(universe, "segment")
     by_segment.to_csv(out_dir / "universe_by_year.csv", index=False)
@@ -509,6 +554,10 @@ def build(parser_root: Path = PARSER_ROOT, out_dir: Path = OUT_DIR) -> dict:
     _by_year(universe, "sponsor_type").to_csv(out_dir / "sponsor_type_by_year.csv", index=False)
     layers = layer_table(tranches, universe)
     layers.to_csv(out_dir / "layer_by_year.csv", index=False)
+    layers_el = layer_table(tranches, universe, band_on="el")
+    layers_el.to_csv(out_dir / "layer_by_year_el.csv", index=False)
+    layer_cov = layer_coverage_table(tranches, universe)
+    layer_cov.to_csv(out_dir / "layer_coverage_by_year.csv", index=False)
     reviews = review_lists(universe)
     for name, frame in reviews.items():
         frame.to_csv(out_dir / f"{name}.csv", index=False)
@@ -542,6 +591,8 @@ def build(parser_root: Path = PARSER_ROOT, out_dir: Path = OUT_DIR) -> dict:
             "tranches_with_spread": int(tranches["spread_risk_margin"].map(pct_to_float).notna().sum()),
             "tranches_with_guidance": int(tranches["price_guidance"].map(guidance_mid).notna().sum()),
             "band_counts": layers.groupby("band")["tranches"].sum().to_dict() if not layers.empty else {},
+            "el_band_counts": layers_el.groupby("band")["tranches"].sum().to_dict() if not layers_el.empty else {},
+            "core_tranches_with_both_el_and_ap": int(layer_cov.loc[layer_cov["segment"].eq("core_property_cat"), "n_both"].sum()) if not layer_cov.empty else 0,
         },
     }
 

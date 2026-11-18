@@ -5,6 +5,26 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-11-18, afternoon): expected-loss bands, coverage table, peril chart renamed
+
+After the review of the Phase 2 decisions. `layer_table(band_on="el")`
+writes `layer_by_year_el.csv`, the same table banded on expected loss with
+the same edges; the atlas shows it first as the pricing view and the
+attachment-probability bands second as the layer view, with the caption
+saying which years the layer view can carry. `layer_coverage_table` writes
+`layer_coverage_by_year.csv`: per segment and year the tranches and
+issued USD with expected loss, attachment probability, both, and expected
+loss plus a settled spread. Core, after the parser's spread round: 740
+tranches state both; expected loss covers 87% to 100% of core principal
+every year from 2016, attachment probability 8% (2020), 22% (2021), 44%
+(2019), 56% (2022), then 90% or more. Expected-loss band counts, all
+segments: below 1% 204, 1 to 2 325, 2 to 4 317, 4 to 8 154, 8 and above
+37, not stated 1,015. The peril chart is now "Issued principal allocated
+by peril" with the equal-split rule and its non-meaning for exposure in
+the caption; `universe_deals.csv` carries `generic_peril` (core deals with
+no hazard class or only `multi_peril_unspecified`, 15). Methods page and
+README updated. Suite 157, atlas 11 figures, page script compiles.
+
 ## Checkpoint (2026-11-18): atlas universe and sponsor fixes, review lists, methods page
 
 Phase 2 follow-through on the atlas (`src/build_atlas.py`, `src/render_atlas.py`,

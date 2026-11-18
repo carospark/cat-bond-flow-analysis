@@ -52,7 +52,8 @@ hand check; a reviewed value belongs in the rules, not in the CSV.
 
 ## Hazard classes and the peril split
 
-Core deals only. The peril text is mapped with the panel builder's lexicon
+The chart is titled "issued principal allocated by peril" because that is
+what it is: an accounting allocation. Core deals only. The peril text is mapped with the panel builder's lexicon
 (`map_perils` in `src/build_deal_panel.py`), which names a hazard class and
 a region per phrase. A deal naming k classes counts once in each class and
 its issued size is split k ways, equally; `deals_multi` in
@@ -60,7 +61,8 @@ its issued size is split k ways, equally; `deals_multi` in
 names no hazard but calls the deal multi-peril ("Multi peril", "Worldwide
 all perils", "Global peak perils") is one class, `multi_peril_unspecified`;
 text the lexicon does not recognise at all is `unmapped`. Both are listed
-in `data/atlas/review_hazard_class.csv`.
+in `data/atlas/review_hazard_class.csv`, and both set `generic_peril` on
+the deal in `universe_deals.csv`.
 
 The equal split is a convention, not an estimate of exposure. A deal
 covering US hurricane and US earthquake is almost always mostly hurricane
@@ -99,15 +101,32 @@ visible. Spread is the parsed risk-margin spread at pricing; the
 price-guidance midpoint is reported beside it with its own count and is
 not a substitute for it.
 
-## Layer bands
+## Bands: expected loss as the pricing view, attachment probability as the layer view
 
-Bands are on the tranche's stated attachment probability in percent: below
-1, 1 to 2, 2 to 4, 4 to 8, 8 and above; `ap_unknown` where none is stated.
-The lower edge is inclusive. Attachment probability is stated on 802 of
-2,051 tranches and is thin for 2019 to 2022 (7 to 38 core tranches a
-year), so the band view is best read from 2023 on until the parser's
-recall improves or the band variable is changed to expected loss (stated
-on 1,036).
+Two band tables share the same edges, in percent: below 1, 1 to 2, 2 to
+4, 4 to 8, 8 and above, lower edge inclusive, `<metric>_unknown` where the
+value is not stated.
+
+- `layer_by_year_el.csv` bands on **expected loss**. This is the primary
+  pricing view: expected loss is stated on 1,037 of 2,052 tranches and on
+  87% to 100% of core issued principal in every year from 2016. It is not a
+  layer. Expected loss folds the chance of attachment and the severity
+  given attachment together, so two bonds in one band can attach at very
+  different probabilities.
+- `layer_by_year.csv` bands on **attachment probability**, the layer
+  language. It is a source gap, not a parser gap, for 2019 to 2021: the
+  pages of those years state it on 6 to 13 of 43 to 73 core tranches (8%
+  to 44% of principal), and only 2 of 115 pages without it name one at
+  all. From 2022 it covers 56% of principal and from 2023 90% or more. Any
+  layer-overlap comparison against reinsurance pricing should use this
+  view, and only in years whose coverage supports it.
+
+`layer_coverage_by_year.csv` gives, per segment and year, the tranches
+and issued USD with expected loss, with attachment probability, with both
+(740 core tranches), and with expected loss plus a settled spread, so a
+chart can state which years each view can carry. Where sample size
+permits, a continuous expected-loss adjustment of spread is preferable to
+the bands, which put a 1.99% and a 2.01% tranche in different cells.
 
 ## Outstanding principal by segment
 
