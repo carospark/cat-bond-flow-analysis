@@ -49,8 +49,16 @@ fund flows left null rather than zero, the marks table, the comparators'
 own units. README points to it.
 
 Atlas regenerated and diffed leaf by leaf; nothing else moved. The parser-
-side attachment-probability and spread recall round is in the parser's
-HANDOFF.md under the same date.
+side attachment-probability and spread recall round (parser commit
+fcfaafa, its HANDOFF.md under the same date) was then fed through:
+tranches with a settled spread 519 -> 887, with an attachment probability
+802 -> 806. Core tranches with a spread by issue year, after: 2019 21 of
+43, 2020 66 of 73, 2021 59 of 66, 2022 61 of 80, 2023 78 of 94, 2024 82 of
+104, 2025 116 of 133. Attachment probability is a source gap for 2019 to
+2021 (6 to 13 of 43 to 73 tranches state one on the page), so the layer
+view there bands by expected loss (63 to 69 stated) or stays thin. The
+AP band counts moved by one to two tranches each (one new four-letter
+class row, Gateway 2026-1 Class AAAA).
 
 Left for Caro: tick the two review lists; choose the band variable for the
 layer view (attachment probability as now, or expected loss, stated on
