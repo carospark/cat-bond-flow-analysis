@@ -149,14 +149,61 @@ P1 holds in the secondary market, P2 does not.
   Florida in their peril text).
 - Retrocession and collateralised reinsurance pricing, which the data
   does not hold; named as an unobserved alternative.
+- Added from the literature (section 6):
+  - Sponsor identity explains about a quarter of issue-price variation
+    and its effect strengthens in hard markets. The differential is
+    estimated with sponsor fixed effects, and a within-sponsor version
+    (sponsors issuing in both groups) is reported beside it.
+  - Hurricane seasonality moves single-peril hurricane spreads by up to
+    half; the issue month is a control, and the January, June and July
+    renewals are compared like with like.
+  - A liquidity premium of about a fifth of the spread, larger for
+    higher-risk bonds, sits inside spread minus EL and varies with layer;
+    the differential is reported for primary-market spreads only, where
+    the liquidity premium is set at issue and does not move between the
+    groups within a window.
+  - EL model vintage changes (the modelling firms' updates after Ian) raise
+    stated EL on the overlap group more than on remote layers; the EL
+    vendor and model version are recorded where the page states them and
+    the differential is re-run on the pre-update cohort.
+  - The cycle effect on spreads is state-dependent and interacts with EL
+    (larger at low EL in the existing estimates), so a differential by
+    layer is expected from pricing mechanics alone; the test therefore
+    reads the sign of the differential against the EL x cycle interaction
+    estimated on the same data, and a differential no larger than that
+    interaction implies is reported as consistent with pricing mechanics,
+    not substitution.
+  - Investors moved to remote layers in late 2022 by their own account; a
+    falling overlap share can be investor de-risking. P2 is therefore read
+    together with P3 and with the share of overlap issuance that was
+    upsized at pricing.
 
-## 6. Literature to search before the write-up
+## 6. Literature
 
-To be done before the atlas is read, so that the design can be adjusted
-and no novelty is claimed that the literature already has: the cat bond
-spread determinants literature (expected loss, peril, trigger, cycle) and
-the work on cat bonds as substitutes or complements for reinsurance.
-List the papers read, with what each measured, here: [ ].
+The list is in `docs/LITERATURE.md` (30 entries, each marked by how it
+was verified). What it settles for the design, before anything is run:
+
+- Not novel, and not to be claimed: the rate-on-line index as a cycle
+  regressor on issue spreads (Braun 2016; Chen et al. 2024;
+  Suttakulpiboon 2025, who already runs a break test at end-2021 on the
+  same index); spread minus EL as the risk-adjusted price (Lane and Mahul
+  2008 onward); substitution being stronger in hard markets at the cedent
+  level, dated with the same Guy Carpenter index (Yu and Zhao 2025).
+- What would be new: the layer-overlap classification as the treatment
+  (Götze and Gürtler 2022, Subramanian and Wang 2018 and Trottier and Lai
+  2017 predict a layer-specific margin but do not construct it), and
+  registered-fund net subscriptions as a demand measure (no precedent at
+  all; the one thesis found is unverified).
+- What the list argues against: a single 2023 window with an annual index
+  as the only cycle measure is one episode confounded with Ian loss
+  creep, collateral yields and EL model updates; the layer comparison is
+  confounded by EL level; registered US funds are a small slice of the
+  specialist-fund base that prices the market (Tomunen 2024); and
+  substitution is not one-directional even at the cedent level, since
+  cat bonds reduced affiliate reinsurance but increased external
+  reinsurance in hard markets (Yu and Zhao 2025). The controls added to
+  section 5 answer the second and third; the first and fourth are
+  limits the write-up states, not ones the design removes.
 
 ## 7. What is reported regardless of outcome
 
