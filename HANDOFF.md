@@ -95,6 +95,27 @@ default run. A wider window (`--pre-days`, `--post-days`) is the one lever
 that adds deals; the hand check of which deals those are is the next
 step before any design.
 
+## Checkpoint (2026-11-18, night): the hurricane track already lives in a third repository
+
+Caro pointed at `/Users/caropark/projects/milton_ian_repricing` (public,
+carospark/milton_ian_repricing). The Phase 3 hurricane study has run there
+since 25 October, with the four-storm pipeline (Ian, Milton, Idalia,
+Beryl) built on 17 and 18 November in parallel with the work here. It
+reads this repository's bridge, TRACE, hazard map, N-PORT holdings and
+prediction-market archive and the parser's tables read-only through its
+config.yaml, and never writes to either. Nothing in either sibling's
+handoff pointed to it, so `event_gate.py` (this morning) partly
+duplicated its coverage audit at a coarser grain: the study requires at
+least three customer trades on each side of landfall at CUSIP level on
+strict high-confidence pairs (Ian 7, Milton 4; no CUSIP trades on two
+dates inside either eight-day event interval), where the gate counts
+deals trading at least once each side (10 and 12). Same conclusion,
+liquidity binds. The gate stays as the deal-level cross-check and its
+README line says so; the study's HANDOFF.md is the state of record for
+the track. Walkthrough v8, `docs/DECISIONS.md` and the two status pages
+were corrected to name the third repository; v7 and the first cut of v8
+had described the track as not started.
+
 ## Checkpoint (2026-11-18): atlas universe and sponsor fixes, review lists, methods page
 
 Phase 2 follow-through on the atlas (`src/build_atlas.py`, `src/render_atlas.py`,

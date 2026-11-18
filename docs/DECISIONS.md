@@ -49,10 +49,16 @@ independent reviews of it.
    peril tags and contract terms, never the split.
 
 **Phase 3 tracks.** The hurricane event study and fund flow plus
-substitution by layer. The event study starts with the gate
-(`event_gate.py`): 10 to 12 Florida-exposed deals trade on both sides of
-Ian and Milton under the 45/60-day window, so the first step is a hand
-look at those deals and at what a wider window adds, before any design.
+substitution by layer. The hurricane study has run since 25 October 2026
+in a third repository, `/Users/caropark/projects/milton_ian_repricing`
+(public on GitHub), which reads this repository and the parser read-only:
+four storms (Ian, Milton, Idalia, Beryl), CUSIP level, strict
+high-confidence pairs only, windows of 45 days before and 60 after
+landfall, aggregates published with suppression below five pairs. Its
+HANDOFF.md is the state of record for that track. Its coverage counts
+(7 and 4 CUSIPs with three customer trades each side of Ian and Milton)
+are the binding constraint; `event_gate.py` here is the coarser
+deal-level cross-check (10 to 12 deals trading at least once each side).
 The parametric design catalogue is the stretch if public-sector
 conversations become the priority. The substitution reading of the atlas
 waits for the pre-registration (`docs/PREREGISTRATION.md`).

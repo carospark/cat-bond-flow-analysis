@@ -63,7 +63,7 @@ src/build_fund_holdings.py    fund holdings joined to deals; fund marks vs TRACE
 src/build_etf_flows.py        daily ETF snapshots -> shares outstanding and flow
 src/build_atlas.py            coverage-aware market atlas tables by segment, peril, layer, year
 src/render_atlas.py           the atlas tables as one local page with coverage beside every chart
-src/event_gate.py             the hurricane event-study gate: exposed, alive, bridged, priced both sides, storm history, mark
+src/event_gate.py             deal-level cross-check of the hurricane study's coverage (the study itself is ../milton_ian_repricing)
 config/tier1_sources.json     the source registry: publisher, title, URL, role
 config/fund_registry.json     funds whose NAV, return, and flow series are pulled
 config/market_signal_sources.json  public API registry for market signals
