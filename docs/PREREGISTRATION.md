@@ -1,18 +1,20 @@
 # Pre-registration: substitution between cat bonds and traditional reinsurance
 
-**Status: revised 2026-11-19 with every analysis choice resolved to one
-rule; awaiting Caro's sign-off (section 8). The substitution analysis is
-paused until then.**
+**Status: final amendment of 2026-11-19 after two reviews; awaiting
+Caro's sign-off (section 8). The substitution analysis is paused until
+then.**
 Nothing below has been run. The point of writing it first is that the
 atlas is descriptive, spread co-movement plus fund inflows is consistent
-with several mechanisms, and a test that cannot lose is not a test. Every
-choice below was filled from the data on 2026-11-18 and resolved on
-2026-11-19 with its reason in the "Why" line and its count behind it;
-change any of them, then date and commit before the atlas is read for
-substitution. Counts are core tranches with both spread and expected loss
-stated. Where a choice had two candidate rules, one is now primary and
-the other is a labelled sensitivity; sensitivities are reported but never
-decide.
+with several mechanisms, and a test that cannot lose is not a test. The
+deciding test is a differential in primary-market pricing and issuance
+(H1). Fund flows and secondary-market prices are descriptive context
+with their tabulation rules fixed here; they do not decide anything in
+this design. Every choice carries the count behind it; change any of
+them, then date and commit before the atlas is read for substitution.
+Counts are core tranches with both spread and expected loss stated unless
+a line says otherwise. Where a choice had two candidate rules, one is
+primary and the other a labelled sensitivity; sensitivities are reported
+but never decide.
 
 ## 1. Two hypotheses, kept apart
 
@@ -20,12 +22,16 @@ decide.
 the layers where traditional reinsurance became expensive, and less where
 it became cheap. Evidence is in issuance and pricing: the share and the
 risk-adjusted spread of cat bonds in the overlapping layers relative to
-the others.
+the others. This is the hypothesis the design tests.
 
 **H2, investor reallocation.** Investors move capital into cat bond
-vehicles when their relative return rises. Evidence is in demand: net
-subscriptions into the registered cat bond funds, and relative pricing in
-comparable bonds in the secondary market.
+vehicles when their relative return rises. Evidence would be in demand:
+net subscriptions into the registered cat bond funds, and relative
+pricing in comparable bonds in the secondary market. This design does
+not decide H2: the secondary-market price series is not a spread series
+(section 2) and the registered funds are a small slice of the investor
+base. Both are tabulated as context under fixed rules, and section 7
+says what a test of H2 would need.
 
 **H0, common capital cycle.** One reinsurance capital cycle moves cat
 bond pricing and traditional pricing together, in every layer, with no
@@ -49,10 +55,11 @@ Why: indemnity US hurricane is the product a Florida or nationwide
 reinsurance programme buys; the 2% to 8% attachment bands are where the
 working layers of those programmes sit, the below-1% band being remote
 cover reinsurance rarely writes. Tranches with spread and expected loss in
-this group: 2022 5, 2023 20, 2024 22, 2025 35, 2026 41. 2022 is below the
-cell minimum, so the overlap group begins in 2023, the hard-market step
-year. Of the US hurricane indemnity tranches issued 2022 to 2026 with an
-attachment probability, 135 of 265 fall in the 2% to 8% bands.
+this group: 2022 5, 2023 20, 2024 22, 2025 35, 2026 41, from 15, 18, 26
+and 29 deals in 2023 to 2026. 2022 is below the cell minimum, so the
+overlap group begins in 2023, the hard-market step year. Of the US
+hurricane indemnity tranches issued 2022 to 2026 with an attachment
+probability, 135 of 265 fall in the 2% to 8% bands.
 
 **Comparison group.** Primary: US hurricane tranches whose trigger is
 industry loss index, parametric, parametric index or modelled loss (the
@@ -63,20 +70,31 @@ groups, reported but never deciding: non-US perils with an attachment
 probability stated; remote US hurricane indemnity layers below 1%.
 
 Why: the index-trigger group is the only comparison with enough tranches
-every year (recounted 2026-11-19 with the trigger list above: 2022 16,
-2023 15, 2024 26, 2025 27, 2026 22; 100 industry-loss-index and 6
-parametric tranches); non-US has 3, 11, 11, 23, 12; remote layers 2, 6,
-3, 5, 8.
+every year (2022 16, 2023 15, 2024 26, 2025 27, 2026 22; 100
+industry-loss-index and 6 parametric tranches); non-US has 3, 11, 11,
+23, 12; remote layers 2, 6, 3, 5, 8.
 
-**Risk-adjusted spread.** Spread minus expected loss, in percentage
-points. Resolved: the primary estimate is the continuous adjustment, a
-regression of spread on expected loss within each issue year with both
-groups pooled and a group indicator, the differential read from the
-change in the group coefficient between windows; it is estimable in every
-year from 2023 because every overlap and comparison cell has at least 10
-tranches. The band comparison (spread minus expected loss averaged within
-a cell) is the sensitivity. Resolved: cells are unweighted, one tranche
-one observation; size weighting is a sensitivity.
+**Risk-adjusted spread and the differential.** Within each issue year
+y, spread is regressed on expected loss with both groups pooled:
+
+    spread = a_y + b_y * EL + g_y * overlap + e
+
+The group coefficient g_y is the expected-loss-adjusted gap between the
+groups in that year. The differential for a window is the change in that
+gap, g_2025 - g_2024 and g_2026 - g_2024 for the softening, g_2024 -
+g_2023 for the step. Because b_y is estimated separately in each year,
+a change in the slope of spread on expected loss between years (the
+expected-loss-by-cycle interaction the literature reports) is absorbed
+by b_y and does not enter the differential; no further adjustment is
+subtracted. Two specification sensitivities are reported beside it: (i)
+log expected loss in place of expected loss, since a linear slope misfits
+if the true relation is curved and the groups sit at different
+expected-loss levels; (ii) group-specific slopes, with g_y evaluated at
+the overlap group's mean expected loss for that year. The band
+comparison (spread minus expected loss averaged within a cell) is a third
+sensitivity. Cells are unweighted, one tranche one observation; size
+weighting is a sensitivity. Estimable in every year from 2023, since
+every overlap and comparison cell has at least 10 tranches.
 
 Why: the comparison group carries higher expected loss (median 2.5 to 4.4
 by year against 2.3 to 2.5 in the overlap group), so a band average would
@@ -93,67 +111,110 @@ relative to its cat bond counterpart, because renewal outcomes vary by
 region and attachment; the result therefore stays at the level of
 differential cat bond pricing and issuance around renewals.
 
-**Cell and windows.** Resolved: the issue year is the cell that decides.
-Renewal windows are supporting detail: 1 January (issues of July to
-December, assigned to the renewal they precede) and mid-year (issues of
-January to June, the Florida 1 June renewal and the 1 July renewal taken
-together). Fund flows are read over the calendar quarter ending at the
-renewal date.
+**Cell and windows.** The issue year is the cell that decides. Renewal
+windows are supporting detail: 1 January (issues of July to December,
+assigned to the renewal they precede) and mid-year (issues of January to
+June, the Florida 1 June renewal and the 1 July renewal taken together).
 
 Why: the 1 July window on its own is empty for the overlap group (0, 0, 0
 and 1 tranche in 2023 to 2026) and the 1 January window is at or below
 the cell minimum (9, 8, 11, 1), while the mid-year window carries most
-issuance (11, 14, 24, 40); only the year is populated enough to decide. A
-one-quarter flow window matches the N-PORT quarterly cadence and avoids
-reading a single month's redemptions.
+issuance (11, 14, 24, 40); only the year is populated enough to decide.
 
-**Fund demand.** Net subscriptions per registered lineage per month from
-the N-PORT filings, sales minus redemptions, so already free of returns
-(`fund_flows_by_month.csv`). Months with a null flow stay null. Resolved:
-P3 is read on the sum across the six lineages (Stone Ridge interval,
+**Issuance share (P2).** One definition for every year, 2020 to 2026,
+because attachment probability is not on the page before 2022 and a
+series that switches from an expected-loss definition to an attachment
+definition would move with the definition. The proxy group is US
+hurricane indemnity tranches with expected loss stated and in the 1% to
+4% band (1% inclusive, 4% exclusive), the expected-loss band that holds
+110 of the 129 overlap tranches of 2023 to 2026. Numerator: the sum of
+final tranche size in US dollars for proxy-group tranches; where a
+tranche has no final size, its deal's size divided equally among the
+deal's tranches is used, and the share so filled is reported (20 of 235
+proxy tranches 2020 to 2026 lack a final size). Denominator: core
+property-cat issued principal in US dollars for the year, from
+`universe_by_year.csv` (deal sizes; 2 to 7 core deals a year carry no
+dollar size and are excluded from both sides, 35 of 834 overall, 26 of
+them non-USD deals not converted). Proxy tranches with expected loss but
+no spread stay in P2, so its counts are 19, 17, 25, 33, 34, 53, 54 for
+2020 to 2026 (12, 15, 19, 27, 23, 32, 34 deals). The attachment-defined
+overlap group's share is reported from 2023 beside the proxy series as
+detail.
+
+**Data cutoff and the 2026 cell.** The directory was crawled on
+2026-08-29 and the parsed deals run to August 2026; TRACE runs to
+2026-06-05; N-PORT flows run to July 2026. The 2026 cell is therefore
+partial and is labelled so everywhere. Rules: for P1 the 2026 cell uses
+every 2026 tranche in hand (all overlap tranches of 2026 were issued
+January to July), with issue month as a control in the pooled
+regression; as a sensitivity, 2024 and 2025 are restricted to January to
+August issues. For P2 the primary 2026 comparison restricts every prior
+year to January to August issues, and the full-year series stops at 2025.
+Flows and secondary prices stop at their own cutoffs, with prior years
+restricted to the same months where a comparison is drawn. If the
+directory is re-crawled before the analysis runs, the 2026 cell is
+re-cut at the re-crawl date and that date replaces 2026-08-29 in the
+results; otherwise 2026-08-29 stands.
+
+**Fund demand, descriptive.** Net subscriptions per registered lineage
+per month from the N-PORT filings, sales minus redemptions, so already
+free of returns (`fund_flows_by_month.csv`). Months with a null flow stay
+null. Tabulation: the sum across the six lineages (Stone Ridge interval,
 Stone Ridge high yield, Pioneer ILS interval, Victory Pioneer cat bond,
-CNR select strategies, Brookmont ETF) for the months that are non-null,
-with the Stone Ridge interval fund also shown on its own because the
-atlas has already established (Figure 13 of the walkthrough) that capital
-moved out of it and into the higher-yield and pure cat bond vehicles from
-2023, a reallocation inside the registered universe that an aggregate
-would hide. Coverage from 2022: four lineages complete or near complete
-(at most 3 null months), Victory Pioneer from November 2022, the ETF from
-April 2025.
+CNR select strategies, Brookmont ETF) by quarter and by year; a quarter
+or year is reported as complete only when every lineage alive in it has
+no null month, otherwise it is shown with the null count and the
+lineages missing; the Stone Ridge interval fund is also shown alone,
+because the atlas has already established (Figure 13 of the walkthrough)
+that capital moved out of it and into the higher-yield and pure cat bond
+vehicles from 2023. "Flat" means an aggregate net flow within 1% of the
+lineages' combined net assets at the start of the period; "positive" and
+"negative" are beyond that band. Coverage from 2022: four lineages
+complete or near complete (at most 3 null months), Victory Pioneer from
+November 2022, the ETF from April 2025.
 
-**Secondary-market prices.** For the secondary-market version of P1 (the
-test that separates H2 from H1): customer trades (TRACE contra party C)
-on CUSIPs bridged at high confidence to overlap or comparison deals,
-monthly volume-weighted average price per CUSIP, the change in the group
-mean between windows. A cell needs at least 10 CUSIPs with a customer
-trade in both windows. Coverage: 48 of the 80 overlap deals and 46 of the
-68 comparison deals are bridged at high confidence (106 and 73 CUSIPs);
-CUSIPs with customer trades in 2023 to 2026 are 15, 37, 58, 67 for the
-overlap group and 22, 39, 54, 42 for the comparison group (2026 is a half
-year).
+**Secondary-market prices, descriptive.** Customer trades (TRACE contra
+party C) on CUSIPs bridged at high confidence to overlap or comparison
+deals, monthly volume-weighted average price per CUSIP, the change in the
+group mean between windows, shown only where at least 10 CUSIPs trade in
+both windows. This is a price series, not a spread series: a traded price
+moves with coupon, remaining term, the floating leg, seasonality inside
+the risk period and accrued loss expectations, none of which is adjusted
+here, so it is shown as context and read for nothing. Coverage: 48 of
+the 80 overlap deals and 46 of the 68 comparison deals are bridged at
+high confidence (106 and 73 CUSIPs); CUSIPs with customer trades in 2023
+to 2026 are 15, 37, 58, 67 for the overlap group and 22, 39, 54, 42 for
+the comparison group.
 
 ## 3. Predictions, stated before looking
 
-If H1 or H2 holds, after the rate-on-line peak and into the softening:
+If H1 holds, after the rate-on-line peak and into the softening:
 
-- P1. The overlap group's risk-adjusted spread falls relative to the
-  comparison group's between the 2024 peak and the 2025 and 2026
-  softening. Predicted sign: negative differential change. The 2023 to
+- P1. The overlap group's expected-loss-adjusted spread falls relative to
+  the comparison group's between the 2024 peak and the 2025 and 2026
+  softening: g_2025 - g_2024 < 0 and g_2026 - g_2024 < 0. The 2023 to
   2024 step is reported too, with the prediction that the overlap group
-  rose at least as much as the comparison group (differential change
-  non-negative).
-- P2. The overlap group's share of core issued principal rises relative to
-  the years before the peak.
-- P3. Net subscriptions into the cat bond lineages are positive in the
-  quarter ending at the renewals where P1 and P2 hold, and negative or
-  flat in the windows where they do not.
+  rose at least as much as the comparison group, g_2024 - g_2023 >= 0.
+- P2. The proxy group's share of core issued principal in 2025 and 2026
+  (January to August) is above its 2020 to 2022 mean.
 
-If H0 holds: P1 shows no differential (both groups move together), P2 is
-flat, and P3 is uninformative because flows follow absolute returns.
+If H0 holds: P1 shows no differential (both groups move together) and P2
+is flat.
 
-H1 without H2: P1 and P2 hold in the primary market, P3 does not. H2
-without H1: P3 holds and P1 holds in the secondary market (section 2),
-P2 does not.
+Disclosure: the P2 proxy series was computed on 2026-11-19 while its
+coverage and the missing-size fill were being checked, and the author of
+this document saw the share by year. P2 is therefore not blind at
+sign-off. Its rule is kept as written and it is reported as a
+pre-specified descriptive comparison beside P1; P1 has not been
+estimated in any form and is the deciding test. The write-up states
+this.
+
+Context, not predictions: P3, the fund-flow tabulation, and the
+secondary-market price tabulation of section 2 are shown for the same
+windows. A reading where P1 and P2 hold while registered-fund flows are
+negative or flat is described as sponsor-side; one where flows are
+strongly positive is described as consistent with either hypothesis; no
+reading of H2 is made.
 
 ## 4. Decision rule
 
@@ -163,37 +224,32 @@ P2 does not.
   omitted. At 10 per cell the year is populated for the overlap group
   from 2023 and for the comparison group from 2022; renewal windows are
   shown as supporting detail and never decide.
-- The differential is the change in the overlap group's risk-adjusted
-  spread minus the change in the comparison group's, from the 2024 peak
-  year to each of 2025 and 2026, and from 2023 to 2024 for the step,
-  estimated as in section 2. Report the number of tranches and the
-  issued principal behind each side.
-- Resolved, the mechanical threshold: cycle effects on spread interact
-  with expected loss, so part of any differential is pricing mechanics.
-  Before P1 is read, the within-year slope of spread on expected loss is
-  estimated on the comparison group alone for the peak year and the
-  softening year; the change in that slope times the difference in mean
-  expected loss between the groups is the differential pricing mechanics
-  alone would produce. P1 is read on the differential net of that
-  amount. A differential no larger in magnitude than that amount is
-  reported as consistent with pricing mechanics, not substitution.
-- Resolved, what counts: H1 is supported if P1 is negative net of the
-  mechanical threshold in both 2025 and 2026 and P2 rises; H1 is not
-  supported if P1 is non-negative in both years; one year each way is
-  reported as inconclusive. The primary comparison group decides; the
-  robustness groups and the sensitivities (band, size-weighted, sponsor
-  fixed effects) are reported beside it and may qualify the reading but
-  do not overturn it. No significance threshold is used; the sign, the
-  size and the counts are reported, with a bootstrap interval over
-  tranches for the primary estimate.
-- Resolved, the pre-2023 baseline: there is no attachment-probability
-  coverage before 2022, so a pre-hard-market baseline is read from the
-  expected-loss bands instead (US hurricane indemnity tranches with
-  expected loss 1% to 4%, the band that corresponds to the 2% to 8%
-  attachment group where both are stated), pooled over 2020 to 2022 (16,
-  17 and 20 tranches; 2019 has 5 and is excluded), reported as a proxy
-  and labelled so. It gives P2 its "years before the peak" level and is
-  not used for P1.
+- Uncertainty: a cluster bootstrap by deal, 2,000 resamples, drawing
+  deals with replacement within each year and group and keeping every
+  tranche of a drawn deal, so that tranches of one deal (same sponsor,
+  date, modeller and prose) are never treated as independent. A 90%
+  percentile interval is reported for each differential and for the
+  pooled softening differential (2025 and 2026 together against 2024,
+  a year indicator for 2026 included). Deals behind the overlap cells:
+  15, 18, 26, 29.
+- Reading, in three states and no others:
+  - **Pattern consistent with H1**: g_2025 - g_2024 and g_2026 - g_2024
+    both negative, the 90% interval for the pooled softening differential
+    excludes zero, and P2 holds.
+  - **Pattern contrary to H1**: both softening differentials non-negative.
+  - **Inconclusive**: anything else, including both negative with an
+    interval that covers zero, one year each way, or P2 failing while P1
+    holds.
+  The primary comparison group and the primary specification decide; the
+  robustness groups and the sensitivities (log expected loss, group
+  slopes, band, size-weighted, sponsor fixed effects) are reported beside
+  them and may qualify the reading in the write-up but do not change its
+  state. No significance threshold other than the interval rule is used.
+- P2's reference level is the proxy share's mean over 2020 to 2022, on
+  January to August issuance for the 2026 comparison and on full years
+  for 2025. P2 "holds" if both 2025 and 2026 are above that mean, "is
+  flat" if both lie within two percentage points of it, and is otherwise
+  reported as mixed.
 - Parallel moves in both groups are reported as consistent with H0.
 - A differential that disappears when the comparison is restricted to the
   same expected-loss band is reported as a composition effect, not
@@ -204,7 +260,8 @@ P2 does not.
 ## 5. What else could produce the pattern, and what is checked
 
 - Expected-loss mix shifting between the groups (handled by the
-  continuous adjustment and checked by the band restriction above).
+  regression, with the log and group-slope specifications and the band
+  restriction as checks).
 - Trigger mix: a move toward indemnity is itself a sponsor choice and is
   reported separately, not folded into P1.
 - Issue size: larger deals price tighter; the size-weighted differential
@@ -219,41 +276,41 @@ P2 does not.
   does not hold; named as an unobserved alternative.
 - Added from the literature (section 6):
   - Sponsor identity explains about a quarter of issue-price variation
-    and its effect strengthens in hard markets. Resolved: a within-sponsor
-    comparison is not feasible and is dropped. No sponsor issues in both
+    and its effect strengthens in hard markets. A within-sponsor
+    comparison is not feasible and is dropped: no sponsor issues in both
     groups in the same year in 2023, 2024 or 2026 and two do in 2025;
     pooled over the four years, 5 of the 50 overlap sponsors appear in
     the comparison group. The sensitivity instead is the pooled
     regression with sponsor fixed effects and year-by-group terms,
     identified from the 24 of 50 overlap sponsors with two or more
-    tranches; it is reported beside the primary estimate.
+    tranches.
   - Hurricane seasonality moves single-peril hurricane spreads by up to
     half; the issue month is a control in the pooled regression, and the
     year cell compares both groups over the same months.
   - A liquidity premium of about a fifth of the spread, larger for
     higher-risk bonds, sits inside spread minus EL and varies with layer;
-    the primary differential is on primary-market spreads only, where the
+    the differential is on primary-market spreads only, where the
     liquidity premium is set at issue and does not move between the
-    groups within a window. The secondary-market version in section 2 is
-    read for H2 and is stated to carry this premium.
+    groups within a window.
   - EL model vintage changes (the modelling firms' updates after Ian)
-    raise stated EL on the overlap group more than on remote layers.
-    Resolved: the model version is never stated on the pages and a
-    pre-update cohort cannot be formed; the modelling firm is stated for
-    99% of overlap tranches (AIR 95, RMS 18, KatRisk 4), so a firm
-    indicator enters the pooled regression and the differential is also
-    shown for the AIR-modelled tranches alone. The vintage effect is
-    named as an unobserved alternative in the write-up.
+    raise stated EL on the overlap group more than on remote layers. The
+    model version is never stated on the pages and a pre-update cohort
+    cannot be formed; the modelling firm is stated for 99% of overlap
+    tranches (AIR 95, RMS 18, KatRisk 4), so a firm indicator enters the
+    pooled regression and the differential is also shown for the
+    AIR-modelled tranches alone. The vintage effect is named as an
+    unobserved alternative in the write-up.
   - The cycle effect on spreads is state-dependent and interacts with EL,
-    so a differential by layer is expected from pricing mechanics alone;
-    the mechanical threshold in section 4 is the explicit rule.
+    so a differential by layer could arise from pricing mechanics alone;
+    the year-specific slope b_y in the regression is the rule, and the
+    log and group-slope specifications are its checks.
   - Investors moved to remote layers in late 2022 by their own account; a
     falling overlap share can be investor de-risking. P2 is therefore read
-    together with P3. The share of overlap issuance upsized at pricing is
-    reported as context only: a size change at pricing is recorded for
-    43% of overlap tranches, nearly all upsizes, and the absence of a
-    record is not evidence that the size held, so the share is not a
-    rule input.
+    with the flow tabulation beside it. The share of overlap issuance
+    upsized at pricing is reported as context only: a size change at
+    pricing is recorded for 43% of overlap tranches, nearly all upsizes,
+    and the absence of a record is not evidence that the size held, so
+    the share is not a rule input.
 
 ## 6. Literature
 
@@ -282,34 +339,50 @@ was verified). What it settles for the design, before anything is run:
   section 5 answer the second and third; the first and fourth are
   limits the write-up states, not ones the design removes.
 
-## 7. What is reported regardless of outcome
+## 7. What is reported regardless of outcome, and what H2 would need
 
-The overlap and comparison definitions, the counts behind every cell,
-the differential per window with its sign and size, the mechanical
-threshold it is read against, the flows per lineage per window, the
-inconclusive windows, and every sensitivity beside the primary estimate.
+Reported in every case: the overlap, comparison and proxy definitions,
+the counts and deals behind every cell, each differential with its sign,
+size and 90% interval, the three-state reading and which rule produced
+it, every sensitivity beside the primary estimate, the P2 series with its
+filled share, the flow and secondary-price tabulations with their
+completeness flags, the inconclusive windows, and the data cutoff used.
 The descriptive atlas is presented as description in either case.
 
-## 8. Choices resolved on 2026-11-19, for sign-off
+A test of H2 would need, and this design does not have: a secondary
+spread series (traded price converted with coupon, remaining term and
+the floating leg, which the bridge's TRACE coupon fields and the parser's
+maturity fields could supply for bridged CUSIPs, not yet built); a demand
+measure covering the specialist funds that hold most of the market, which
+the registered-fund filings do not; and a pre-registered rule for both.
+If those are built, they get their own pre-registration.
+
+## 8. Choices resolved, for sign-off
 
 Each line is one rule the analysis will follow. The alternative named is
 reported as a sensitivity, never used to decide. Strike or amend any
 line, date it, and commit; the analysis starts only after this section is
-signed.
+signed. Rows 1 to 12 were resolved on 2026-11-19 in the morning; rows
+marked (r) were revised, and rows 13 to 16 added, in the final amendment
+the same day after the second review.
 
 | # | Choice | Rule | Alternative, demoted to sensitivity | Count behind it |
 |---|---|---|---|---|
 | 1 | Comparison trigger list | Industry loss index, parametric, parametric index, modelled loss | Non-US perils; remote US hurricane indemnity below 1% | 16, 15, 26, 27, 22 tranches 2022 to 2026 |
-| 2 | Risk adjustment | Continuous: spread on expected loss within year, pooled, group coefficient | Band average of spread minus expected loss | Every cell has at least 10 tranches from 2023 |
+| 2 (r) | Risk adjustment | Within-year regression of spread on expected loss, pooled, group coefficient; no further subtraction | Log expected loss; group-specific slopes at the overlap mean; band average | Every cell has at least 10 tranches from 2023 |
 | 3 | Weighting | Unweighted, one tranche one observation | Size-weighted | Final size stated for 77% of overlap tranches |
 | 4 | Deciding cell | Issue year | 1 January and mid-year renewal windows as detail; 1 July folded into mid-year | 1 July window holds 0, 0, 0, 1 overlap tranches |
-| 5 | Fund demand | Sum of six lineages on non-null months, Stone Ridge interval fund also shown alone | Per-lineage reading | Four lineages complete from 2022; Victory Pioneer from Nov 2022; ETF from Apr 2025 |
-| 6 | Secondary-market P1 | Monthly VWAP of customer trades on high-confidence CUSIPs; minimum 10 CUSIPs per cell | None | 15 to 67 overlap and 22 to 54 comparison CUSIPs a year |
-| 7 | Mechanical threshold | Comparison-group EL slope change times the groups' mean EL gap; P1 read net of it | None | Comparison EL median 2.5 to 4.4 against overlap 2.3 to 2.5 |
-| 8 | Support rule | H1 supported only if P1 negative in both 2025 and 2026 net of #7 and P2 rises; non-negative in both refutes; split is inconclusive | None; no significance threshold, bootstrap interval reported | |
-| 9 | Pre-2023 baseline | Expected loss 1% to 4% US hurricane indemnity, pooled 2020 to 2022, used for P2 only | None | 16, 17, 20 tranches; 2019 excluded at 5 |
+| 5 (r) | Fund flows | Descriptive only: six-lineage sum by quarter and year, complete only with no null month, Stone Ridge interval fund also alone, flat = within 1% of start net assets | None; H2 not decided | Four lineages complete from 2022; Victory Pioneer from Nov 2022; ETF from Apr 2025 |
+| 6 (r) | Secondary prices | Descriptive only: monthly VWAP of customer trades on high-confidence CUSIPs, minimum 10 CUSIPs; a price series, not a spread series | None; H2 not decided | 15 to 67 overlap and 22 to 54 comparison CUSIPs a year |
+| 7 (r) | Expected-loss-by-cycle interaction | Absorbed by the year-specific slope; the former extra subtraction is removed as double-adjusting | Log and group-slope specifications | Comparison EL median 2.5 to 4.4 against overlap 2.3 to 2.5 |
+| 8 (r) | Reading | Three states: pattern consistent with H1 (both softening differentials negative, pooled 90% interval excludes zero, P2 holds); pattern contrary to H1 (both non-negative); inconclusive otherwise | None | |
+| 9 (r) | Issuance share, P2 | One proxy definition for 2020 to 2026: US hurricane indemnity, expected loss 1% to 4%; reference level is the 2020 to 2022 mean | Attachment-defined share from 2023 as detail | 110 of 129 overlap tranches sit in the proxy band |
 | 10 | Sponsor control | Pooled regression with sponsor fixed effects as sensitivity; within-sponsor comparison dropped | Within-sponsor (infeasible) | 0, 0, 2, 0 sponsors in both groups by year; 5 of 50 pooled |
 | 11 | Model vintage | Modelling-firm indicator; AIR-only differential shown; version unobserved and said so | Pre-update cohort (infeasible) | Firm stated for 99% of overlap tranches; AIR 95, RMS 18 |
 | 12 | Upsizing | Reported as context, not a rule input | None | Size change recorded for 43% of overlap tranches |
+| 13 | P2 numerator and denominator | Final tranche size in USD, missing filled by deal size split equally across the deal's tranches and the filled share reported; over core property-cat issued principal in USD for the year | Unfilled numerator | 20 of 235 proxy tranches unsized; 35 of 834 core deals carry no USD size |
+| 14 | 2026 cutoff | Directory crawl of 2026-08-29 (re-cut if re-crawled before the run); P1 uses all 2026 tranches with issue-month control; P2 compares January to August across years; flows to July 2026, TRACE to 2026-06-05; 2026 labelled partial | Prior years restricted to January to August for P1 | 2026 overlap issues span January to July |
+| 15 | Uncertainty | Cluster bootstrap by deal, 2,000 resamples, 90% percentile interval, pooled softening differential | None | Overlap deals per cell 15, 18, 26, 29 |
+| 16 | P2 blindness | Disclosed: the proxy share series was seen on 2026-11-19 during the coverage check; P2 is kept as pre-specified but not blind; P1 is blind and decides | None | |
 
 Signed: ____________________  Date: __________

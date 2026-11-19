@@ -5,6 +5,24 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-11-19, later): pre-registration final amendment after the second review
+
+Five points from the second review are resolved in `docs/PREREGISTRATION.md`:
+the extra "mechanical threshold" subtraction is removed (the year-specific
+expected-loss slope already absorbs the interaction; log and group-slope
+specifications are the checks); P2 has a numerator, a denominator, a
+missing-size fill rule and one proxy definition (US hurricane indemnity,
+expected loss 1% to 4%) for 2020 to 2026, with the 2020 to 2022 mean as its
+reference; fund flows and secondary prices are descriptive only and H2 is
+not decided by this design, with their tabulation rules fixed and section 7
+saying what an H2 test would need; the 2026 cutoff is explicit (directory
+crawl 2026-08-29, TRACE 2026-06-05, flows July 2026, same-months comparisons);
+the reading has three states (consistent with H1, contrary to H1,
+inconclusive) with a cluster bootstrap by deal, 2,000 resamples, 90%
+interval. Disclosed in the document: the P2 share series was seen while its
+coverage was checked, so P2 is pre-specified but not blind; P1 has not been
+estimated and decides. Still paused for sign-off (section 8, 16 rows).
+
 ## Checkpoint (2026-11-19): pre-registration revised, every choice resolved; analysis paused for sign-off
 
 `docs/PREREGISTRATION.md` now resolves each analysis choice to one rule,
