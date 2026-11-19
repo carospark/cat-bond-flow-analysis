@@ -5,6 +5,42 @@ parser's handoff is `../cat-bond-issuance/HANDOFF.md`; its `PARSER_BACKLOG.md`
 is the parser's state. Data under `data/` and `raw/` is never committed; the
 numbers below are read from the local outputs at the time of writing.
 
+## Checkpoint (2026-11-19): pre-registration revised, every choice resolved; analysis paused for sign-off
+
+`docs/PREREGISTRATION.md` now resolves each analysis choice to one rule,
+with the alternative demoted to a labelled sensitivity, and ends with a
+twelve-row sign-off table (section 8). Nothing has been run; the
+substitution reading of the atlas stays paused until Caro signs. Counts
+behind the resolutions, from the local outputs on 2026-11-19:
+
+- Renewal windows cannot decide: the 1 July window holds 0, 0, 0 and 1
+  overlap tranches in 2023 to 2026 and 1 January holds 9, 8, 11, 1; the
+  mid-year window holds 11, 14, 24, 40. The issue year is the cell.
+- A within-sponsor comparison is infeasible: sponsors issuing in both
+  groups in the same year are 0, 0, 2, 0; pooled, 5 of 50 overlap
+  sponsors. Sponsor fixed effects stay as a sensitivity (24 of 50 overlap
+  sponsors have two or more tranches).
+- Model version is never stated; the modelling firm is stated for 99% of
+  overlap tranches (AIR 95, RMS 18, KatRisk 4), so it is the control.
+- Final tranche size is stated for 77% of overlap tranches, so cells are
+  unweighted and size weighting is the sensitivity; a size change at
+  pricing is recorded for 43%, nearly all upsizes, so the upsized share is
+  context only.
+- The comparison group carries more expected loss (median 2.5 to 4.4 by
+  year against 2.3 to 2.5), so the continuous adjustment is primary and
+  the band restriction is the composition check; the restricted comparison
+  cell for 2026 holds 8 tranches and is inconclusive by rule.
+- Secondary-market coverage for the H2 test: 48 of 80 overlap and 46 of
+  68 comparison deals bridged at high confidence; CUSIPs with customer
+  trades 15, 37, 58, 67 (overlap) and 22, 39, 54, 42 (comparison) in 2023
+  to 2026.
+- Comparison-group counts recounted with the explicit trigger list
+  (industry loss index, parametric, parametric index, modelled loss):
+  16, 15, 26, 27, 22 for 2022 to 2026, against 14, 14, 26, 27, 24 in the
+  18 November draft.
+
+Open for Caro: sign or amend section 8 of the pre-registration.
+
 ## Checkpoint (2026-11-18, afternoon): expected-loss bands, coverage table, peril chart renamed
 
 After the review of the Phase 2 decisions. `layer_table(band_on="el")`
